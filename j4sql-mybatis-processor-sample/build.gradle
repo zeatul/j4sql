@@ -1,0 +1,31 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+description = 'Examples of using j4sql-mybatis-processor and j4sql-mybatis-annotations, with model definitions from the bookstore example project of jdesigner.'
+
+dependencies {
+    implementation 'io.github.zeatul:hawk-core'
+    implementation 'io.github.zeatul:hawk-dao-base'
+    implementation project(':j4sql')
+    implementation project(':j4sql-mybatis')
+
+    implementation project(':j4sql-mybatis-annotations')
+    implementation 'org.mybatis:mybatis'
+    implementation 'org.springframework:spring-context'
+
+    annotationProcessor project(':j4sql-mybatis-processor')
+    annotationProcessor 'io.github.zeatul:bookstore-designer'
+}
+
+compileJava {
+//     enable remote debug
+//    options.fork = true
+//    options.forkOptions.jvmArgs += ['-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=9000']
+//    options.debug = true
+//    options.incremental = false
+}
+
+tasks.named('compileJava') {
+    outputs.upToDateWhen { false }
+}

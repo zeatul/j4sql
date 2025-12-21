@@ -1,0 +1,25 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+description = 'Maintains the logic for generating j4sql-mybatis code based on the jdesigner model.'
+
+dependencies {
+    implementation 'io.github.zeatul:hawk-core'
+    implementation 'io.github.zeatul:hawk-dao-base'
+    implementation project(':j4sql')
+    implementation project(':j4sql-mybatis')
+
+    implementation 'io.github.zeatul:codepoet-core'
+    implementation 'io.github.zeatul:javapoet-pro'
+
+    implementation 'io.github.zeatul:jdesigner-spec'
+    implementation 'io.github.zeatul:jdesigner-annotations'
+    implementation 'io.github.zeatul:jdesigner-extensions'
+    implementation 'io.github.zeatul:jdesigner-translator'
+
+    implementation 'org.springframework:spring-beans'
+    implementation 'org.springframework:spring-context'
+    implementation 'org.slf4j:slf4j-api'
+    implementation 'org.mybatis:mybatis'
+}

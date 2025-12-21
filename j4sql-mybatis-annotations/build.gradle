@@ -1,0 +1,14 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+description = 'Used to define the configuration information required for generating j4sql-mybatis code based on the jdesigner model.'
+
+dependencies {
+    compileOnly 'io.github.zeatul:jdesigner-spec'
+    compileOnly 'io.github.zeatul:hawk-dao-base'
+    compileOnly 'io.github.zeatul:jdesigner-translator'
+    compileOnly 'io.github.zeatul:jdesigner-extensions'
+    compileOnly 'io.github.zeatul:jdesigner-builder'
+    compileOnly 'io.github.zeatul:javapoet-pro'
+}

@@ -1,0 +1,11 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+description = 'JOOQ-style, write type-safe SQL in Java with robust syntax validation, database-agnostic design, and automatic dialect adaptation based on DataSource or database configuration.'
+
+dependencies {
+    implementation 'io.github.zeatul:hawk-core'
+    implementation 'io.github.zeatul:codepoet-core'
+    implementation 'org.slf4j:slf4j-api'
+}
