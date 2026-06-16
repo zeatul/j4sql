@@ -15,13 +15,31 @@
  */
 package glz.hawk.j4sql.support;
 
+import glz.hawkframework.core.helper.MapHelper;
+
+import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.util.Map;
+
+import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
+import static glz.hawkframework.core.support.StateSupport.stateNotNull;
+
 /**
  * This enum is responsible for
  *
  * @author Hawk
  */
 public enum SqlDialect {
-    ORACLE,
-    MYSQL,
-    DEFAULT
+    ORACLE, MYSQL, DEFAULT;
+
+    private final static Map<String, SqlDialect> nameMap = MapHelper.<String, SqlDialect>builder().put(ORACLE.name(), ORACLE).put(MYSQL.name(), MYSQL).put(DEFAULT.name(), DEFAULT).buildHashMap();
+
+    public static @Nullable SqlDialect fromName(@Nullable String name) {
+        if (name == null) return null;
+        return nameMap.get(name);
+    }
+
+    public static @Nonnull SqlDialect parseBysName(@Nonnull String name) {
+        return stateNotNull(fromName(argNotNull(name)), () -> String.format("Found no SqlDialect named %s", name));
+    }
 }

@@ -15,8 +15,8 @@
  */
 package glz.hawk.j4sql.condition.impl;
 
-import glz.hawk.j4sql.support.Configuration;
 import glz.hawk.j4sql.condition.Comparator;
+import glz.hawk.j4sql.support.Configuration;
 
 /**
  * This enum is responsible for

@@ -16,9 +16,9 @@
 
 package glz.hawk.j4sql.dsl.select;
 
-import glz.hawk.j4sql.dsl.select.after.AfterSelectWhereClauseStep;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.condition.ConnectCondition;
+import glz.hawk.j4sql.dsl.select.after.AfterSelectWhereClauseStep;
 
 import javax.annotation.Nonnull;
 

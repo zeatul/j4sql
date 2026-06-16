@@ -33,18 +33,17 @@ import static glz.hawk.j4sql.support.impl.DSL.*;
  * @author Hawk
  */
 public class InsertTest {
-    private final Configuration configuration = new DefaultConfiguration();
+    private final Configuration configuration = DefaultConfiguration.builder().build();
     private final PhysicalTable BOOK = tab("BOOK");
     private final NamedColumn BOOK_ID = col("BOOK_ID");
-    private final NamedColumn BOOK_NAME= col("BOOK_NAME");
-    private final NamedColumn BOOK_PRICE= col("BOOK_PRICE");
+    private final NamedColumn BOOK_NAME = col("BOOK_NAME");
+    private final NamedColumn BOOK_PRICE = col("BOOK_PRICE");
 
     @Test
-    public void insertTest(){
-       Insert insert =  insertInto(BOOK,BOOK_ID,BOOK_NAME,BOOK_PRICE)
-            .values(1,"Hi",12.3).build();
+    public void insertTest() {
+        Insert insert = insertInto(BOOK, BOOK_ID, BOOK_NAME, BOOK_PRICE)
+            .values(1, "Hi", 12.3).build();
         System.out.println(new SqlBuilderImpl<>(configuration, SqlWriterImpl::new).build(insert, new DefaultBuilderContext()));
     }
-
 
 }

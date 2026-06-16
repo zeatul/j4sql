@@ -16,12 +16,12 @@
 
 package glz.hawk.j4sql.mybatis.sql;
 
-import glz.hawkframework.core.helper.StringHelper;
+import glz.hawk.j4sql.support.NamedParameter;
 import glz.hawk.j4sql.support.ValueColumn;
 import glz.hawk.j4sql.support.impl.AbstractSqlColumn;
 import glz.hawk.j4sql.support.impl.DefaultAliasedNamedColumn;
 import glz.hawk.j4sql.support.impl.DefaultNamedParameter;
-import glz.hawk.j4sql.support.NamedParameter;
+import glz.hawkframework.core.helper.StringHelper;
 import org.apache.ibatis.type.JdbcType;
 
 import javax.annotation.Nonnull;

@@ -17,6 +17,7 @@
 package glz.hawk.j4sql.support;
 
 import javax.annotation.Nonnull;
+import java.util.Optional;
 
 /**
  * This class is responsible for
@@ -36,5 +37,9 @@ public interface SelectColumn extends SqlColumn {
 
     @Nonnull
     <T extends SelectColumn> AliasedSelectColumn<T> as(String aliasName);
+
+    Optional<Object> getExtension(String key);
+
+    <T> Optional<T> getExtension(String key, Class<T> tClass);
 
 }

@@ -16,9 +16,9 @@
 
 package glz.hawk.j4sql.support.impl;
 
+import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.support.JoinType;
 import glz.hawk.j4sql.support.SqlTable;
-import glz.hawk.j4sql.condition.Condition;
 
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 

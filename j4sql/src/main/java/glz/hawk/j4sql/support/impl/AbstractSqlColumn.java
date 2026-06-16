@@ -180,9 +180,13 @@ public abstract class AbstractSqlColumn implements SqlColumn {
         return IsNotNullCondition.of(this);
     }
 
+    @Nonnull
     @Override
     public <T> Condition between(T minValue, T maxValue) {
-        return BetweenCondition.of(this, minValue, maxValue);
+        return BetweenCondition.of(this,
+            minValue instanceof SqlColumn ? (SqlColumn) minValue : new DefaultValueColumn(minValue),
+            maxValue instanceof SqlColumn ? (SqlColumn) maxValue : new DefaultValueColumn(maxValue)
+        );
     }
 
     private Condition compare(SqlColumn sqlColumn, Comparator comparator) {

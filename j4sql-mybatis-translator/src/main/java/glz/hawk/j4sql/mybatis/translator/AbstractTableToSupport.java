@@ -16,13 +16,13 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
+import glz.hawk.codepoet.java.type.ClassName;
+import glz.hawk.codepoet.java.type.ParameterizedTypeName;
 import glz.hawk.jdesigner.spec.base.Model;
 import glz.hawk.jdesigner.spec.database.Column;
 import glz.hawk.jdesigner.spec.database.Table;
 import glz.hawk.jdesigner.translator.Translator;
 import glz.hawkframework.core.helper.StringHelper;
-import glz.hawk.codepoet.java.type.ClassName;
-import glz.hawk.codepoet.java.type.ParameterizedTypeName;
 
 import java.util.List;
 
@@ -35,15 +35,33 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
  */
 public abstract class AbstractTableToSupport {
 
-    protected final Translator<Model, String> supportClassPackageTranslator;
+    protected final Translator<Table, String> supportClassPackageTranslator;
     protected final Translator<Table, String> supportClassNameTranslator;
-    protected final Translator<Model, String> poClassPackageTranslator;
+    protected final Translator<Table, String> poClassPackageTranslator;
     protected final Translator<Table, String> poClassNameTranslator;
-    protected final Translator<Model, String> updateClassPackageTranslator;
+    protected final Translator<Table, String> updateClassPackageTranslator;
     protected final Translator<Table, String> updateClassNameTranslator;
     protected final Translator<Table, String> columnUpdateClassNameTranslator;
+    protected final Translator<Table, String> fieldTableNameTranslator;
+    protected final Translator<Table, String> tableNameTranslator;
+    protected final Translator<Column, String> fieldColumnNameTranslator;
+    protected final Translator<Column, String> columnNameTranslator;
+    protected final boolean supportColumnInsertOrUpdate;
 
-    protected AbstractTableToSupport(Translator<Model, String> supportClassPackageTranslator, Translator<Table, String> supportClassNameTranslator, Translator<Model, String> poClassPackageTranslator, Translator<Table, String> poClassNameTranslator, Translator<Model, String> updateClassPackageTranslator, Translator<Table, String> updateClassNameTranslator, Translator<Table, String> columnUpdateClassNameTranslator) {
+    protected AbstractTableToSupport(
+        Translator<Table, String> supportClassPackageTranslator,
+        Translator<Table, String> supportClassNameTranslator,
+        Translator<Table, String> poClassPackageTranslator,
+        Translator<Table, String> poClassNameTranslator,
+        Translator<Table, String> updateClassPackageTranslator,
+        Translator<Table, String> updateClassNameTranslator,
+        Translator<Table, String> columnUpdateClassNameTranslator,
+        Translator<Table, String> fieldTableNameTranslator,
+        Translator<Table, String> tableNameTranslator,
+        Translator<Column, String> fieldColumnNameTranslator,
+        Translator<Column, String> columnNameTranslator,
+        boolean supportColumnInsertOrUpdate
+    ) {
         this.supportClassPackageTranslator = argNotNull(supportClassPackageTranslator, "supportClassPackageTranslator");
         this.supportClassNameTranslator = argNotNull(supportClassNameTranslator, "supportClassNameTranslator");
         this.poClassPackageTranslator = argNotNull(poClassPackageTranslator, "poClassPackageTranslator");
@@ -51,14 +69,11 @@ public abstract class AbstractTableToSupport {
         this.updateClassPackageTranslator = argNotNull(updateClassPackageTranslator, "updateClassPackageTranslator");
         this.updateClassNameTranslator = argNotNull(updateClassNameTranslator, "updateClassNameTranslator");
         this.columnUpdateClassNameTranslator = argNotNull(columnUpdateClassNameTranslator, "columnUpdateClassNameTranslator");
-    }
-
-    protected String fieldTableName(Table table) {
-        return table.getName();
-    }
-
-    protected String fieldColumnName(Column column) {
-        return column.getName();
+        this.fieldTableNameTranslator = argNotNull(fieldTableNameTranslator, "fieldTableNameTranslator");
+        this.tableNameTranslator = argNotNull(tableNameTranslator, "tableNameTranslator");
+        this.fieldColumnNameTranslator = argNotNull(fieldColumnNameTranslator, "fieldColumnNameTranslator");
+        this.columnNameTranslator = argNotNull(columnNameTranslator, "columnNameTranslator");
+        this.supportColumnInsertOrUpdate = supportColumnInsertOrUpdate;
     }
 
     protected String fieldColumnsName(Table table) {
@@ -70,7 +85,7 @@ public abstract class AbstractTableToSupport {
     }
 
     protected String paramColumnName(Column column) {
-        return String.format("PARAM_%S", column.getName());
+        return String.format("PARAM_%S", fieldColumnNameTranslator.translate(column));
     }
 
     protected String poParamName(Table table) {
@@ -107,6 +122,10 @@ public abstract class AbstractTableToSupport {
 
     protected String fieldColumnsName() {
         return "COLUMNS";
+    }
+
+    protected String fieldPrimaryKeyColumnsName(){
+        return "PRIMARY_KEY_COLUMNS";
     }
 
     protected ClassName supportClassName(Table table) {

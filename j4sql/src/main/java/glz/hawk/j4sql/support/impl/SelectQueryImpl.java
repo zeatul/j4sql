@@ -16,14 +16,13 @@
 
 package glz.hawk.j4sql.support.impl;
 
-import glz.hawk.j4sql.support.*;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.condition.ConnectCondition;
 import glz.hawk.j4sql.condition.Connector;
 import glz.hawk.j4sql.condition.impl.CombinedCondition;
 import glz.hawk.j4sql.condition.impl.DefaultConnectCondition;
 import glz.hawk.j4sql.condition.impl.NotCondition;
-import glz.hawkframework.core.support.ArgumentSupport;
+import glz.hawk.j4sql.support.*;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;

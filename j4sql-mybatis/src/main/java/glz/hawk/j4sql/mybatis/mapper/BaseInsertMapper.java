@@ -16,10 +16,10 @@
 
 package glz.hawk.j4sql.mybatis.mapper;
 
+import glz.hawk.j4sql.mybatis.sql.provider.SqlProviderAdapter;
 import glz.hawk.j4sql.mybatis.statement.GeneralStatementProvider;
 import glz.hawk.j4sql.mybatis.statement.InsertStatementProvider;
 import glz.hawk.j4sql.mybatis.statement.MultiRowsInsertStatementProvider;
-import glz.hawk.j4sql.mybatis.sql.provider.SqlProviderAdapter;
 import org.apache.ibatis.annotations.Flush;
 import org.apache.ibatis.annotations.InsertProvider;
 import org.apache.ibatis.executor.BatchResult;

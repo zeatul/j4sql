@@ -16,8 +16,8 @@
 
 package glz.hawk.j4sql.dsl.select;
 
-import glz.hawk.j4sql.support.SqlTable;
 import glz.hawk.j4sql.dsl.select.after.AfterSelectJoinClauseStep;
+import glz.hawk.j4sql.support.SqlTable;
 
 import javax.annotation.Nonnull;
 

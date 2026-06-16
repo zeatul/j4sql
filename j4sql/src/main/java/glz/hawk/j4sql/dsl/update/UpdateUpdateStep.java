@@ -19,6 +19,7 @@ package glz.hawk.j4sql.dsl.update;
 import glz.hawk.j4sql.dsl.update.after.AfterUpdateUpdateClauseStep;
 import glz.hawk.j4sql.support.AliasedSqlTable;
 import glz.hawk.j4sql.support.PhysicalTable;
+import glz.hawk.j4sql.support.SqlTable;
 
 import javax.annotation.Nonnull;
 
@@ -30,9 +31,6 @@ import javax.annotation.Nonnull;
 public interface UpdateUpdateStep {
 
     @Nonnull
-    AfterUpdateUpdateClauseStep update(PhysicalTable updateTable);
-
-    @Nonnull
-    AfterUpdateUpdateClauseStep update(AliasedSqlTable<PhysicalTable> aliasedUpdateTable);
+    AfterUpdateUpdateClauseStep update(SqlTable... updateTables);
 
 }

@@ -13,9 +13,9 @@ rootProject.name = 'j4sql'
 include 'j4sql' // Use java to write sql
 include 'j4sql-mybatis' // Use java to write mybatis xml enhanced sql
 include 'j4sql-mybatis-translator'
+include 'j4sql-mybatis-generator'
 include 'j4sql-mybatis-annotations'
 include 'j4sql-mybatis-processor'
-include 'j4sql-mybatis-processor-main'
 include 'j4sql-mybatis-processor-sample'
 
 dependencyResolutionManagement {

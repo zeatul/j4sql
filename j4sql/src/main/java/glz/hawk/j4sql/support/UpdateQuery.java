@@ -30,11 +30,9 @@ public interface UpdateQuery extends ConditionSupport {
      * The return value must be the instance of {@code PhysicalTable} or {@code AliasedSqlTable<PhysicalTable>}
      */
     @Nonnull
-    SqlTable getUpdateTable();
+    List<SqlTable> getUpdateTables();
 
-    void addUpdateTable(PhysicalTable updateTable);
-
-    void addUpdateTable(AliasedSqlTable<PhysicalTable> aliasedUpdateTable);
+    void addUpdateTable(SqlTable... updateTables);
 
     void addSet(NamedColumn updateColumn, SqlColumn valueColumn);
 

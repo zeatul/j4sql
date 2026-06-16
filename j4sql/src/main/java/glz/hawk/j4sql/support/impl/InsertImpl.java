@@ -30,7 +30,6 @@ import glz.hawk.j4sql.support.ValueColumn;
 import javax.annotation.Nonnull;
 import java.util.Arrays;
 
-import static glz.hawkframework.core.support.ArgumentSupport.argNotEmpty;
 import static glz.hawkframework.core.support.ArgumentSupport.argNotEmptyAndNoNulElement;
 
 /**

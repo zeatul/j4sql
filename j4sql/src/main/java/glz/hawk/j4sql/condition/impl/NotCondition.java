@@ -18,7 +18,7 @@ package glz.hawk.j4sql.condition.impl;
 
 import glz.hawk.j4sql.condition.Condition;
 
-import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
+import static glz.hawkframework.core.support.ArgumentSupport.argument;
 
 /**
  * This class is responsible for
@@ -30,7 +30,8 @@ public class NotCondition implements Condition {
     private final Condition originalCondition;
 
     private NotCondition(Condition originalCondition) {
-        this.originalCondition = argNotNull(originalCondition, "originalCondition");
+        argument(originalCondition, c -> !(c == null || c instanceof EmptyCondition), c -> "The originalCondition can't be null or an EmptyCondition.");
+        this.originalCondition = originalCondition;
     }
 
     public static NotCondition of(Condition condition) {

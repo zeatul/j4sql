@@ -18,6 +18,8 @@ package glz.hawk.j4sql.support.impl;
 
 import glz.hawk.j4sql.support.ScalarColumn;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -35,13 +37,13 @@ public class DefaultScalarColumn extends AbstractSelectColumn implements ScalarC
     private final Class<?> valueClass;
 
     private DefaultScalarColumn(Object value) {
-        this.value = argNotNull(value,"value");
+        this.value = argNotNull(value, "value");
         this.valueClass = value.getClass();
     }
 
-    private DefaultScalarColumn(){
-        this.value = null;
-        this.valueClass = Object.class;
+    private DefaultScalarColumn() {
+        this.value = NullValue.INSTANCE;
+        this.valueClass = NullValue.class;
     }
 
 
@@ -55,39 +57,73 @@ public class DefaultScalarColumn extends AbstractSelectColumn implements ScalarC
         return valueClass;
     }
 
-    DefaultScalarColumn of(Integer value){
+
+
+    public static DefaultScalarColumn of(Long value) {
         return new DefaultScalarColumn(value);
     }
 
-    DefaultScalarColumn of(Long value){
+    public static DefaultScalarColumn of(long value) {
         return new DefaultScalarColumn(value);
     }
 
-    DefaultScalarColumn ofNull(){
-        return new DefaultScalarColumn();
-    }
-
-    DefaultScalarColumn of(String value){
+    public static DefaultScalarColumn of(Integer value) {
         return new DefaultScalarColumn(value);
     }
 
-    DefaultScalarColumn of(Short value){
+    public static DefaultScalarColumn of(int value) {
         return new DefaultScalarColumn(value);
     }
 
-    DefaultScalarColumn of(Byte value){
+    public static DefaultScalarColumn ofNull() {
+        return new DefaultScalarColumn(NullValue.INSTANCE);
+    }
+
+    public static DefaultScalarColumn ofEmpty() {
+        return new DefaultScalarColumn(EmptyValue.INSTANCE);
+    }
+
+    public static DefaultScalarColumn of(String value) {
         return new DefaultScalarColumn(value);
     }
 
-    DefaultScalarColumn of(LocalDateTime value){
+    public static DefaultScalarColumn of(Short value) {
         return new DefaultScalarColumn(value);
     }
 
-    DefaultScalarColumn of(LocalDate value){
+    public static DefaultScalarColumn of(short value) {
         return new DefaultScalarColumn(value);
     }
 
-    DefaultScalarColumn of(LocalTime value){
+    public static DefaultScalarColumn of(Byte value) {
+        return new DefaultScalarColumn(value);
+    }
+
+    public static DefaultScalarColumn of(byte value) {
+        return new DefaultScalarColumn(value);
+    }
+
+    public static DefaultScalarColumn of(LocalDateTime value) {
+        return new DefaultScalarColumn(value);
+    }
+
+    public static DefaultScalarColumn of(LocalDate value) {
+        return new DefaultScalarColumn(value);
+    }
+
+    public static DefaultScalarColumn of(LocalTime value) {
+        return new DefaultScalarColumn(value);
+    }
+
+    public static DefaultScalarColumn of(BigDecimal value) {
+        return new DefaultScalarColumn(value);
+    }
+
+    public static DefaultScalarColumn of(BigInteger value) {
+        return new DefaultScalarColumn(value);
+    }
+
+    public static DefaultScalarColumn of(Character value) {
         return new DefaultScalarColumn(value);
     }
 }

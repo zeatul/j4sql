@@ -16,18 +16,18 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
-import glz.hawk.jdesigner.spec.base.Model;
-import glz.hawk.jdesigner.spec.database.Table;
-import glz.hawk.jdesigner.translator.Translator;
+import glz.hawk.codepoet.java.AnnotationInstanceSpec;
+import glz.hawk.codepoet.java.InterfaceSpec;
+import glz.hawk.codepoet.java.JavaFile;
+import glz.hawk.codepoet.java.type.ClassName;
+import glz.hawk.codepoet.java.type.ParameterizedTypeName;
 import glz.hawk.j4sql.mybatis.mapper.BaseDeleteMapper;
 import glz.hawk.j4sql.mybatis.mapper.BaseInsertMapper;
 import glz.hawk.j4sql.mybatis.mapper.BaseSelectMapper;
 import glz.hawk.j4sql.mybatis.mapper.BaseUpdateMapper;
-import glz.hawk.codepoet.java.AnnotationInstanceSpec;
-import glz.hawk.codepoet.java.JavaFile;
-import glz.hawk.codepoet.java.InterfaceSpec;
-import glz.hawk.codepoet.java.type.ClassName;
-import glz.hawk.codepoet.java.type.ParameterizedTypeName;
+import glz.hawk.jdesigner.spec.base.Model;
+import glz.hawk.jdesigner.spec.database.Table;
+import glz.hawk.jdesigner.translator.Translator;
 import org.apache.ibatis.annotations.Mapper;
 
 import javax.annotation.Nonnull;

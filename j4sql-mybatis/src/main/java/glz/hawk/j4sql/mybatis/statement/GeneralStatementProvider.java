@@ -17,7 +17,6 @@
 package glz.hawk.j4sql.mybatis.statement;
 
 import javax.annotation.Nonnull;
-import java.util.Map;
 
 /**
  * This class is responsible for

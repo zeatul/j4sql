@@ -16,9 +16,9 @@
 
 package glz.hawk.j4sql.dsl.update;
 
-import glz.hawk.j4sql.dsl.update.after.AfterUpdateOnClauseStep;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.condition.ConnectCondition;
+import glz.hawk.j4sql.dsl.update.after.AfterUpdateOnClauseStep;
 
 import javax.annotation.Nonnull;
 

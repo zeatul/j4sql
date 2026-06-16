@@ -16,19 +16,20 @@
 
 package glz.hawk.j4sql.writer.impl;
 
-import glz.hawk.j4sql.condition.impl.*;
-import glz.hawk.j4sql.support.*;
-import glz.hawkframework.core.helper.StringHelper;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.condition.ConnectCondition;
+import glz.hawk.j4sql.condition.impl.*;
 import glz.hawk.j4sql.dsl.delete.Delete;
 import glz.hawk.j4sql.dsl.insert.Insert;
 import glz.hawk.j4sql.dsl.select.Select;
 import glz.hawk.j4sql.dsl.update.Update;
+import glz.hawk.j4sql.support.*;
+import glz.hawk.j4sql.support.impl.EmptyValue;
 import glz.hawk.j4sql.support.impl.JoinInfo;
 import glz.hawk.j4sql.support.impl.NullValue;
 import glz.hawk.j4sql.support.impl.SqlClause;
 import glz.hawk.j4sql.writer.SqlWriter;
+import glz.hawkframework.core.helper.StringHelper;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -40,6 +41,8 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
 
+import static glz.hawk.j4sql.support.SqlDialect.MYSQL;
+import static glz.hawk.j4sql.support.SqlDialect.ORACLE;
 import static glz.hawk.j4sql.support.impl.Keywords.*;
 import static glz.hawkframework.core.support.ArgumentSupport.argNotEmpty;
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
@@ -53,6 +56,7 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWriter implements SqlWriter {
 
     protected final B builderContext;
+
     private final Configuration configuration;
 
     public SqlWriterImpl(Appendable out, Configuration configuration, B builderContext) {
@@ -137,7 +141,12 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
 
     protected void emitUpdate(UpdateQuery query, boolean inline) throws IOException {
         // UPDATE
-        builderContext.buildStep(SqlClause.UPDATE_TABLE_CLAUSE, () -> emit("$K $T", UPDATE, query.getUpdateTable()));
+        builderContext.buildStep(SqlClause.UPDATE_TABLE_CLAUSE, () -> {
+            emit("$K $T", UPDATE, query.getUpdateTables().get(0));
+            for (int i = 1; i < query.getUpdateTables().size(); i++) {
+                emit(", $T", query.getUpdateTables().get(i));
+            }
+        });
 
         // JOIN ON
         emitJoinInfos(query.getJoinInfos(), inline);
@@ -169,6 +178,12 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
         // SELECT
         builderContext.buildStep(SqlClause.SELECT_CLAUSE, () -> {
             emit("$K", SELECT);
+
+            // mysql and oracle hint
+            if ((configuration.getDialect() == MYSQL || configuration.getDialect() == ORACLE) && StringHelper.isNotBlank(query.getHint())) {
+                emit(" /*+ $L */", query.getHint());
+            }
+
             // COUNT DISTINCT
             if (query.isCount() && query.isDistinct()) {
                 emit(" $K($K", COUNT, DISTINCT);
@@ -195,9 +210,6 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
                 emit(")");
             }
         });
-
-
-        // TODO: hint
 
         // INTO
         SqlTable intoTable = query.getInto();
@@ -339,6 +351,13 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
     }
 
     protected void emitSourceColumn(SqlColumn sqlColumn) throws IOException {
+        // PhysicalColumn
+        if (sqlColumn instanceof PhysicalColumn) {
+            PhysicalColumn physicalColumn = (PhysicalColumn) sqlColumn;
+            emit("$T.$L", physicalColumn.getTable(), physicalColumn.getColumnName());
+            return;
+        }
+
         if (sqlColumn instanceof NamedColumn) {
             NamedColumn namedColumn = (NamedColumn) sqlColumn;
             if (StringHelper.isNotBlank(namedColumn.getTableName())) {
@@ -347,26 +366,56 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
             emit(namedColumn.getColumnName());
             return;
         }
+
         if (sqlColumn instanceof ScalarColumn) {
             emitValue(((ScalarColumn) sqlColumn).getValue());
             return;
         }
+
         if (sqlColumn instanceof ValueColumn) {
             emitValue(((ValueColumn) sqlColumn).getValue());
             return;
         }
+
         if (sqlColumn instanceof SelectFunctionColumn) {
             builderContext.buildStep(SqlClause.SELECT_FUNCTION_COLUMN_CLAUSE, () -> emitFunction(((SelectFunctionColumn) sqlColumn).getFunction()));
             return;
         }
+
         if (sqlColumn instanceof SubqueryColumn) {
+            emit("(");
             emitSelect(((SubqueryColumn) sqlColumn).getSelect().getSelectQuery(), true);
+            emit(")");
             return;
         }
+
         if (sqlColumn instanceof SelectExpressionColumn) {
             builderContext.buildStep(SqlClause.SELECT_EXPRESSION_COLUMN_CLAUSE, () -> emitExpression(((SelectExpressionColumn) sqlColumn).getExpression()));
             return;
         }
+
+        if (sqlColumn instanceof CaseWhenColumn) {
+            builderContext.buildStep(SqlClause.CASE_WHEN_CLAUSE, () -> {
+                CaseWhenQuery caseWhen = ((CaseWhenColumn) sqlColumn).getCaseWhen().getCaseWhenQuery();
+                emit("($K ", CASE);
+                if (caseWhen.getCase() != null) {
+                    emit("$C ", caseWhen.getCase());
+                }
+                for (WhenTenPair whenThen : caseWhen.getWhenThenPairs()) {
+                    if (whenThen.getWhenColumn() != null) {
+                        emit("$K $C $K $C ", WHEN, whenThen.getWhenColumn(), THEN, whenThen.getThen());
+                    } else {
+                        emit("$K $B $K $C ", WHEN, whenThen.getWhenCondition(), THEN, whenThen.getThen());
+                    }
+                }
+                if (caseWhen.getElse() != null) {
+                    emit("$K $C ", ELSE, caseWhen.getElse());
+                }
+                emit("$K)", END);
+            });
+            return;
+        }
+
         throw new UnsupportedOperationException(String.format("Unsupported SqlColumn Class: %s", sqlColumn.getClass().getCanonicalName()));
     }
 
@@ -431,7 +480,13 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
           TODO: Support Schema
          */
         if (sqlTable instanceof PhysicalTable) {
-            emit(((PhysicalTable) sqlTable).getTableName());
+            PhysicalTable t = (PhysicalTable) sqlTable;
+            String schema = StringHelper.isBlank(t.getSchema()) ? configuration.getDefaultSchema() : t.getSchema();
+            if (StringHelper.isBlank(schema)) {
+                emit(t.getTableName());
+            } else {
+                emit("$L.$L", schema, t.getTableName());
+            }
             return;
         }
         if (sqlTable instanceof SubqueryTable) {
@@ -476,6 +531,7 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
             return;
         }
         if (condition instanceof CombinedCondition) {
+            // TODO: 最外围的combinedCondition不需要括号
             emit("(");
             CombinedCondition combinedCondition = (CombinedCondition) condition;
             emit("$B", combinedCondition.getCondition());
@@ -483,6 +539,10 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
                 emit(" $K $B", connectCondition.getConnector(), connectCondition.getCondition());
             }
             emit(")");
+            return;
+        }
+        if (condition instanceof EmptyCondition) {
+            emit(" ");
             return;
         }
         throw new UnsupportedEncodingException(String.format("Unsupported Condition Type: %s", condition.getClass()));
@@ -553,6 +613,8 @@ public class SqlWriterImpl<B extends BuilderContext> extends AbstractSqlCodeWrit
             emitLocalTime((LocalTime) value);
         } else if (value instanceof NullValue) {
             emit("null");
+        } else if (value instanceof EmptyValue) {
+            emit("''");
         } else {
             throw new UnsupportedOperationException(String.format("The type(%s) of single value is not supported by database.", value.getClass().getCanonicalName()));
         }

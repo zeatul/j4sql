@@ -16,19 +16,20 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
-import glz.hawk.jdesigner.spec.base.Model;
-import glz.hawk.jdesigner.spec.database.Column;
-import glz.hawk.jdesigner.spec.database.Table;
-import glz.hawk.jdesigner.translator.Translator;
-import glz.hawk.j4sql.mybatis.sql.MybatisParam;
-import glz.hawk.j4sql.support.PhysicalTable;
-import glz.hawk.j4sql.support.impl.DefaultAliasedNamedColumn;
-import glz.hawk.j4sql.support.impl.DefaultPhysicalTable;
 import glz.hawk.codepoet.java.ClassSpec;
 import glz.hawk.codepoet.java.FieldSpec;
 import glz.hawk.codepoet.java.JavaFile;
 import glz.hawk.codepoet.java.type.ArrayTypeName;
-import org.apache.ibatis.type.JdbcType;
+import glz.hawk.j4sql.mybatis.sql.MybatisParam;
+import glz.hawk.j4sql.support.PhysicalTable;
+import glz.hawk.j4sql.support.impl.DefaultAliasedNamedColumn;
+import glz.hawk.j4sql.support.impl.DefaultPhysicalTable;
+import glz.hawk.jdesigner.spec.base.Model;
+import glz.hawk.jdesigner.spec.database.Column;
+import glz.hawk.jdesigner.spec.database.IndexColumn;
+import glz.hawk.jdesigner.spec.database.PrimaryKey;
+import glz.hawk.jdesigner.spec.database.Table;
+import glz.hawk.jdesigner.translator.Translator;
 
 import javax.annotation.Nonnull;
 import javax.lang.model.element.Modifier;
@@ -44,19 +45,13 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
  */
 public class TableToSupport extends AbstractTableToSupport implements Translator<Table, JavaFile> {
 
-    private final Translator<Column, String> fieldNameTranslator;
-    private final Translator<Column, String> getterNameTranslator;
-    private final Translator<Column, String> getterUpdatedNameTranslator;
+    protected final Translator<Column, String> fieldNameTranslator;
+    protected final Translator<Column, String> jdbcTypeNameTranslator;
 
-    public TableToSupport(Translator<Model, String> supportClassPackageTranslator, Translator<Table, String> supportClassNameTranslator,
-                          Translator<Model, String> poClassPackageTranslator, Translator<Table, String> poClassNameTranslator,
-                          Translator<Column, String> fieldNameTranslator, Translator<Column, String> getterNameTranslator,
-                          Translator<Model, String> updateClassPackageTranslator, Translator<Table, String> updateClassNameTranslator, Translator<Table, String> columnUpdateClassNameTranslator,
-                          Translator<Column, String> getterUpdatedNameTranslator) {
-        super(supportClassPackageTranslator, supportClassNameTranslator, poClassPackageTranslator, poClassNameTranslator, updateClassPackageTranslator, updateClassNameTranslator, columnUpdateClassNameTranslator);
+    public TableToSupport(Translator<Table, String> supportClassPackageTranslator, Translator<Table, String> supportClassNameTranslator, Translator<Table, String> poClassPackageTranslator, Translator<Table, String> poClassNameTranslator, Translator<Table, String> updateClassPackageTranslator, Translator<Table, String> updateClassNameTranslator, Translator<Table, String> columnUpdateClassNameTranslator, Translator<Table, String> fieldTableNameTranslator, Translator<Table, String> tableNameTranslator, Translator<Column, String> fieldColumnNameTranslator, Translator<Column, String> columnNameTranslator, boolean supportColumnInsertOrUpdate, Translator<Column, String> fieldNameTranslator, Translator<Column, String> jdbcTypeNameTranslator) {
+        super(supportClassPackageTranslator, supportClassNameTranslator, poClassPackageTranslator, poClassNameTranslator, updateClassPackageTranslator, updateClassNameTranslator, columnUpdateClassNameTranslator, fieldTableNameTranslator, tableNameTranslator, fieldColumnNameTranslator, columnNameTranslator, supportColumnInsertOrUpdate);
         this.fieldNameTranslator = argNotNull(fieldNameTranslator, "fieldNameTranslator");
-        this.getterNameTranslator = argNotNull(getterNameTranslator, "getterNameTranslator");
-        this.getterUpdatedNameTranslator = argNotNull(getterUpdatedNameTranslator, "getterUpdatedNameTranslator");
+        this.jdbcTypeNameTranslator = argNotNull(jdbcTypeNameTranslator, "jdbcTypeNameTranslator");
     }
 
     @Nonnull
@@ -65,7 +60,7 @@ public class TableToSupport extends AbstractTableToSupport implements Translator
 
         argNotNull(table, "table");
         String className = supportClassNameTranslator.translate(table);
-        ClassSpec.Builder builder = ClassSpec.builder(className).addModifier(Modifier.PUBLIC);
+        ClassSpec.Builder builder = ClassSpec.builder(className).addModifiers(Modifier.PUBLIC, Modifier.ABSTRACT);
 
         // fields
         // table
@@ -83,6 +78,9 @@ public class TableToSupport extends AbstractTableToSupport implements Translator
         // params
         builder.addField(paramFieldColumns(table));
 
+        // primary key columns
+        builder.addField(fieldPrimaryKeyColumns(table));
+
         // methods
 
         // static imports
@@ -92,34 +90,32 @@ public class TableToSupport extends AbstractTableToSupport implements Translator
     }
 
     protected FieldSpec fieldTable(Table table) {
-        return FieldSpec.builder(PhysicalTable.class, fieldTableName(table), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .setInitializer("new $T($S)", DefaultPhysicalTable.class, fieldTableName(table))
-            .build();
+        return FieldSpec.builder(PhysicalTable.class, fieldTableNameTranslator.translate(table), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).setInitializer("new $T($S)", DefaultPhysicalTable.class, tableNameTranslator.translate(table)).build();
     }
 
     protected FieldSpec fieldColumn(Column column) {
-        return FieldSpec.builder(DefaultAliasedNamedColumn.class, fieldColumnName(column), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .setInitializer("new $T($S, $S)", DefaultAliasedNamedColumn.class, fieldColumnName(column), fieldNameTranslator.translate(column))
-            .build();
+        return FieldSpec.builder(DefaultAliasedNamedColumn.class, fieldColumnNameTranslator.translate(column), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).setInitializer("new $T($S, $S)", DefaultAliasedNamedColumn.class, columnNameTranslator.translate(column), fieldNameTranslator.translate(column)).build();
     }
 
     protected FieldSpec fieldColumns(Table table) {
-        return FieldSpec.builder(ArrayTypeName.ofType(DefaultAliasedNamedColumn.class), fieldColumnsName(), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .setInitializer("new $T[]{$L}", DefaultAliasedNamedColumn.class, Arrays.stream(table.getColumns()).map(Column::getName).collect(Collectors.joining(", ")))
-            .build();
+        return FieldSpec.builder(ArrayTypeName.ofType(DefaultAliasedNamedColumn.class), fieldColumnsName(), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).setInitializer("new $T[]{$L}", DefaultAliasedNamedColumn.class, Arrays.stream(table.getColumns()).map(fieldColumnNameTranslator::translate).collect(Collectors.joining(", "))).build();
+    }
+
+    protected FieldSpec fieldPrimaryKeyColumns(Table table) {
+       Column[] columns = table.getPrimaryKey().map(PrimaryKey::getIndexColumns).map(indexColumns ->
+             Arrays.stream(indexColumns).map(IndexColumn::getColumn).toArray(Column[]::new)
+       ).orElse(new Column[0]);
+        return FieldSpec.builder(ArrayTypeName.ofType(DefaultAliasedNamedColumn.class), fieldPrimaryKeyColumnsName(), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).setInitializer("new $T[]{$L}", DefaultAliasedNamedColumn.class, Arrays.stream(columns).map(fieldColumnNameTranslator::translate).collect(Collectors.joining(", "))).build();
     }
 
     protected FieldSpec paramFieldColumn(Column column) {
-        return FieldSpec.builder(MybatisParam.class, paramColumnName(column), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .setInitializer("$T.builder($S, $L).build()", MybatisParam.class, fieldNameTranslator.translate(column), JdbcType.forCode(column.getDataType().getType()).name())
-            .build();
+        return FieldSpec.builder(MybatisParam.class, paramColumnName(column), Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).setInitializer("$T.builder($S, $L).build()", MybatisParam.class, fieldNameTranslator.translate(column), jdbcTypeNameTranslator.translate(column)).build();
     }
 
     protected FieldSpec paramFieldColumns(Table table) {
-        return FieldSpec.builder(ArrayTypeName.ofType(MybatisParam.class), "PARAM_COLUMNS", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL)
-            .setInitializer("new $T[]{$L}", MybatisParam.class, Arrays.stream(table.getColumns()).map(this::paramColumnName).collect(Collectors.joining(", ")))
-            .build();
+        return FieldSpec.builder(ArrayTypeName.ofType(MybatisParam.class), "PARAM_COLUMNS", Modifier.PUBLIC, Modifier.STATIC, Modifier.FINAL).setInitializer("new $T[]{$L}", MybatisParam.class, Arrays.stream(table.getColumns()).map(this::paramColumnName).collect(Collectors.joining(", "))).build();
     }
+
 
     /// ///////////////
 

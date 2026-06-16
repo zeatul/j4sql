@@ -16,6 +16,8 @@
 
 package glz.hawk.j4sql.condition;
 
+import javax.annotation.Nonnull;
+
 /**
  * This class is responsible for
  *
@@ -23,7 +25,7 @@ package glz.hawk.j4sql.condition;
  */
 public interface ConnectCondition{
 
-    Connector getConnector();
+    @Nonnull Connector getConnector();
 
-    Condition getCondition();
+    @Nonnull Condition getCondition();
 }

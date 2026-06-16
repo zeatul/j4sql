@@ -19,29 +19,96 @@ package glz.hawk.j4sql.support.impl;
 import glz.hawk.j4sql.support.Configuration;
 import glz.hawk.j4sql.support.SqlDialect;
 
+import static glz.hawkframework.core.support.ArgumentSupport.argNotBlank;
+import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
+
 /**
  * This class is responsible for
  *
  * @author Hawk
  */
 public class DefaultConfiguration implements Configuration {
+
+    private final SqlDialect dialect;
+    private final String indent;
+    private final String lineSeparator;
+    private final String defaultSchema;
+    private final boolean isInline;
+
+    private DefaultConfiguration(Builder builder) {
+        this.dialect = builder.dialect;
+        this.indent = builder.indent;
+        this.lineSeparator = builder.lineSeparator;
+        this.defaultSchema = builder.defaultSchema;
+        this.isInline = builder.isInline;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
     @Override
     public SqlDialect getDialect() {
-        return SqlDialect.DEFAULT;
+        return dialect;
     }
 
     @Override
     public String getIndent() {
-        return "  ";
+        return indent;
     }
 
     @Override
     public String getLineSeparator() {
-        return "\n";
+        return lineSeparator;
     }
 
     @Override
     public boolean isInline() {
-        return false;
+        return isInline;
+    }
+
+    @Override
+    public String getDefaultSchema() {
+        return defaultSchema;
+    }
+
+    public static class Builder {
+        private SqlDialect dialect = SqlDialect.DEFAULT;
+        private String indent = "  ";
+        private String lineSeparator = "\n";
+        private String defaultSchema = null;
+        private boolean isInline = false;
+
+        private Builder() {
+        }
+
+        public Builder setDialect(SqlDialect dialect) {
+            this.dialect = argNotNull(dialect, "dialect");
+            return this;
+        }
+
+        public Builder setIndent(String indent) {
+            this.indent = indent;
+            return this;
+        }
+
+        public Builder setLineSeparator(String lineSeparator) {
+            this.lineSeparator = lineSeparator;
+            return this;
+        }
+
+        public Builder setDefaultSchema(String defaultSchema) {
+            this.defaultSchema = defaultSchema == null ? null : argNotBlank(defaultSchema, "defaultSchema");
+            return this;
+        }
+
+        public Builder setIsInline(boolean isInline) {
+            this.isInline = isInline;
+            return this;
+        }
+
+        public DefaultConfiguration build() {
+            return new DefaultConfiguration(this);
+        }
     }
 }

@@ -35,9 +35,9 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
  *
  * @author Hawk
  */
-public class SelectImpl implements Select, SelectSelectStep,
-        AfterSelectSelectClauseStep, AfterSelectIntoClauseStep, AfterSelectFromClauseStep, AfterSelectJoinClauseStep, AfterSelectOnClauseStep,
-        AfterSelectWhereClauseStep, AfterSelectGroupByClauseStep, AfterSelectHavingClauseStep, AfterSelectOrderByClauseStep, AfterSelectLimitClauseStep,
+public class SelectImpl implements Select, SelectSelectStep, AfterSelectHintClauseStep,
+    AfterSelectSelectClauseStep, AfterSelectIntoClauseStep, AfterSelectFromClauseStep, AfterSelectJoinClauseStep, AfterSelectOnClauseStep,
+    AfterSelectWhereClauseStep, AfterSelectGroupByClauseStep, AfterSelectHavingClauseStep, AfterSelectOrderByClauseStep, AfterSelectLimitClauseStep,
     AfterSelectOffsetClauseStep, AfterSelectForUpdateClauseStep {
 
     private final SelectQuery selectQuery;
@@ -96,7 +96,7 @@ public class SelectImpl implements Select, SelectSelectStep,
 
     @Nonnull
     @Override
-    public AfterSelectFromClauseStep hint(String hint) {
+    public AfterSelectHintClauseStep hint(String hint) {
         selectQuery.setHint(hint);
         return this;
     }
@@ -246,14 +246,14 @@ public class SelectImpl implements Select, SelectSelectStep,
 
     @Override
     public AfterSelectLimitClauseStep limit(ValueColumn limit) {
-        selectQuery.addLimit(argNotNull(limit,"limit"));
+        selectQuery.addLimit(argNotNull(limit, "limit"));
         return this;
     }
 
     @Override
     public AfterSelectLimitClauseStep limit(@Nonnull Supplier<Boolean> conditionSupplier, Long limit) {
         if (conditionSupplier.get()) {
-            selectQuery.addLimit(new DefaultValueColumn(argNotNull(limit,"limit")));
+            selectQuery.addLimit(new DefaultValueColumn(argNotNull(limit, "limit")));
         }
         return this;
     }
@@ -261,7 +261,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Override
     public AfterSelectLimitClauseStep limit(@Nonnull Supplier<Boolean> conditionSupplier, ValueColumn limit) {
         if (conditionSupplier.get()) {
-            selectQuery.addLimit(argNotNull(limit,"limit"));
+            selectQuery.addLimit(argNotNull(limit, "limit"));
         }
         return this;
     }
@@ -269,7 +269,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Override
     public AfterSelectLimitClauseStep limit(boolean condition, Long limit) {
         if (condition) {
-            selectQuery.addLimit(new DefaultValueColumn(argNotNull(limit,"limit")));
+            selectQuery.addLimit(new DefaultValueColumn(argNotNull(limit, "limit")));
         }
         return this;
     }
@@ -277,7 +277,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Override
     public AfterSelectLimitClauseStep limit(boolean condition, ValueColumn limit) {
         if (condition) {
-            selectQuery.addLimit(argNotNull(limit,"limit"));
+            selectQuery.addLimit(argNotNull(limit, "limit"));
         }
         return this;
     }
@@ -292,7 +292,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Nonnull
     @Override
     public AfterSelectOffsetClauseStep offset(ValueColumn offset) {
-        selectQuery.addOffset(argNotNull(offset,"offset"));
+        selectQuery.addOffset(argNotNull(offset, "offset"));
         return this;
     }
 
@@ -300,7 +300,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Override
     public AfterSelectOffsetClauseStep offset(@Nonnull Supplier<Boolean> conditionSupplier, Long offset) {
         if (conditionSupplier.get()) {
-            selectQuery.addOffset(new DefaultValueColumn(argNotNull(offset,"offset")));
+            selectQuery.addOffset(new DefaultValueColumn(argNotNull(offset, "offset")));
         }
         return this;
     }
@@ -309,7 +309,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Override
     public AfterSelectOffsetClauseStep offset(@Nonnull Supplier<Boolean> conditionSupplier, ValueColumn offset) {
         if (conditionSupplier.get()) {
-            selectQuery.addOffset(argNotNull(offset,"offset"));
+            selectQuery.addOffset(argNotNull(offset, "offset"));
         }
         return this;
     }
@@ -318,7 +318,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Override
     public AfterSelectOffsetClauseStep offset(boolean condition, Long offset) {
         if (condition) {
-            selectQuery.addOffset(new DefaultValueColumn(argNotNull(offset,"offset")));
+            selectQuery.addOffset(new DefaultValueColumn(argNotNull(offset, "offset")));
         }
         return this;
     }
@@ -327,7 +327,7 @@ public class SelectImpl implements Select, SelectSelectStep,
     @Override
     public AfterSelectOffsetClauseStep offset(boolean condition, ValueColumn offset) {
         if (condition) {
-            selectQuery.addOffset(argNotNull(offset,"offset"));
+            selectQuery.addOffset(argNotNull(offset, "offset"));
         }
         return this;
     }
@@ -340,7 +340,7 @@ public class SelectImpl implements Select, SelectSelectStep,
 
     @Override
     public AfterSelectForUpdateClauseStep forUpdate(boolean forUpdate) {
-        if (forUpdate){
+        if (forUpdate) {
             selectQuery.setForUpdate();
         }
         return this;

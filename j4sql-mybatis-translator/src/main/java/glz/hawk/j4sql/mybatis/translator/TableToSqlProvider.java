@@ -16,15 +16,15 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
+import com.google.common.base.CaseFormat;
 import glz.hawk.codepoet.java.*;
-import glz.hawk.jdesigner.spec.base.Model;
-import glz.hawk.jdesigner.spec.database.Column;
-import glz.hawk.jdesigner.spec.database.IndexColumn;
-import glz.hawk.jdesigner.spec.database.PrimaryKey;
-import glz.hawk.jdesigner.spec.database.Table;
-import glz.hawk.jdesigner.translator.Translator;
-import glz.hawk.jdesigner.translator.database.TableHelper;
-import glz.hawkframework.core.helper.ObjectHelper;
+import glz.hawk.codepoet.java.type.ParameterizedTypeName;
+import glz.hawk.codepoet.java.type.TypeName;
+import glz.hawk.j4sql.condition.Condition;
+import glz.hawk.j4sql.dsl.delete.Delete;
+import glz.hawk.j4sql.dsl.insert.Insert;
+import glz.hawk.j4sql.dsl.select.Select;
+import glz.hawk.j4sql.dsl.update.Update;
 import glz.hawk.j4sql.mybatis.sql.MybatisParam;
 import glz.hawk.j4sql.mybatis.sql.provider.AbstractSqlProvider;
 import glz.hawk.j4sql.mybatis.statement.GeneralStatementProvider;
@@ -37,19 +37,16 @@ import glz.hawk.j4sql.mybatis.statement.impl.MultiRowsInsertStatementProviderImp
 import glz.hawk.j4sql.mybatis.statement.impl.UpdateStatementProviderImpl;
 import glz.hawk.j4sql.mybatis.writer.MybatisBuilderContext;
 import glz.hawk.j4sql.mybatis.writer.MybatisBuilderContextImpl;
-import glz.hawk.j4sql.condition.Condition;
-import glz.hawk.j4sql.dsl.delete.Delete;
-import glz.hawk.j4sql.dsl.insert.Insert;
-import glz.hawk.j4sql.dsl.select.Select;
-import glz.hawk.j4sql.dsl.update.Update;
 import glz.hawk.j4sql.support.SqlBuilder;
 import glz.hawk.j4sql.support.impl.DSL;
 import glz.hawk.j4sql.support.impl.DefaultAliasedNamedColumn;
 import glz.hawk.j4sql.util.QueryWrapper;
+import glz.hawk.jdesigner.spec.base.Model;
+import glz.hawk.jdesigner.spec.database.*;
+import glz.hawk.jdesigner.translator.Translator;
+import glz.hawkframework.core.helper.ObjectHelper;
 import glz.hawkframework.core.support.ArgumentSupport;
 import glz.hawkframework.core.support.LogicSupport;
-import glz.hawk.codepoet.java.type.ParameterizedTypeName;
-import glz.hawk.codepoet.java.type.TypeName;
 import org.apache.ibatis.builder.annotation.ProviderMethodResolver;
 import org.springframework.stereotype.Component;
 
@@ -70,26 +67,47 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
  */
 public class TableToSqlProvider extends AbstractTableToSupport implements Translator<Table, JavaFile> {
     protected final Translator<Column, String> columnToParamNameTranslator;
+
     protected final Translator<Column, TypeName> columnToTypeNameTranslator;
+
     private final Translator<Model, String> sqlProviderClassPackageTranslator;
+
     private final Translator<Table, String> sqlProviderClassNameTranslator;
+
     private final Translator<Column, String> getterNameTranslator;
+
     private final Translator<Column, String> getterUpdatedNameTranslator;
 
-    public TableToSqlProvider(Translator<Model, String> sqlProviderClassPackageTranslator, Translator<Table, String> sqlProviderClassNameTranslator,
-                              Translator<Model, String> supportClassPackageTranslator, Translator<Table, String> supportClassNameTranslator,
-                              Translator<Model, String> poClassPackageTranslator, Translator<Table, String> poClassNameTranslator,
-                              Translator<Column, String> columnToParamNameTranslator, Translator<Column, TypeName> columnToTypeNameTranslator,
-                              Translator<Model, String> updateClassPackageTranslator, Translator<Table, String> updateClassNameTranslator,
-                              Translator<Table, String> columnUpdateClassNameTranslator, Translator<Column, String> getterNameTranslator,
-                              Translator<Column, String> getterUpdatedNameTranslator) {
-        super(supportClassPackageTranslator, supportClassNameTranslator, poClassPackageTranslator, poClassNameTranslator, updateClassPackageTranslator, updateClassNameTranslator, columnUpdateClassNameTranslator);
+    private final ColumnFinder recordVersionColumnFinder;
+
+    public TableToSqlProvider(Translator<Model, String> sqlProviderClassPackageTranslator,
+                              Translator<Table, String> sqlProviderClassNameTranslator,
+                              Translator<Table, String> supportClassPackageTranslator,
+                              Translator<Table, String> supportClassNameTranslator,
+                              Translator<Table, String> poClassPackageTranslator,
+                              Translator<Table, String> poClassNameTranslator,
+                              Translator<Column, String> columnToParamNameTranslator,
+                              Translator<Column, TypeName> columnToTypeNameTranslator,
+                              Translator<Table, String> updateClassPackageTranslator,
+                              Translator<Table, String> updateClassNameTranslator,
+                              Translator<Table, String> columnUpdateClassNameTranslator,
+                              Translator<Table, String> fieldTableNameTranslator,
+                              Translator<Table, String> tableNameTranslator,
+                              Translator<Column, String> fieldColumnNameTranslator,
+                              Translator<Column, String> columnNameTranslator,
+                              Translator<Column, String> getterNameTranslator,
+                              Translator<Column, String> getterUpdatedNameTranslator,
+                              ColumnFinder recordVersionColumnFinder,
+                              boolean supportColumnInsertOrUpdate
+    ) {
+        super(supportClassPackageTranslator, supportClassNameTranslator, poClassPackageTranslator, poClassNameTranslator, updateClassPackageTranslator, updateClassNameTranslator, columnUpdateClassNameTranslator, fieldTableNameTranslator, tableNameTranslator, fieldColumnNameTranslator, columnNameTranslator, supportColumnInsertOrUpdate);
         this.sqlProviderClassPackageTranslator = argNotNull(sqlProviderClassPackageTranslator, "sqlProviderClassPackageTranslator");
         this.sqlProviderClassNameTranslator = argNotNull(sqlProviderClassNameTranslator, "sqlProviderClassNameTranslator");
         this.columnToParamNameTranslator = argNotNull(columnToParamNameTranslator, "columnToParamNameTranslator");
         this.columnToTypeNameTranslator = argNotNull(columnToTypeNameTranslator, "columnToTypeNameTranslator");
         this.getterNameTranslator = argNotNull(getterNameTranslator, "getterNameTranslator");
         this.getterUpdatedNameTranslator = argNotNull(getterUpdatedNameTranslator, "getterUpdatedNameTranslator");
+        this.recordVersionColumnFinder = argNotNull(recordVersionColumnFinder, "recordVersionColumnFinder");
     }
 
     @Nonnull
@@ -101,7 +119,6 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .addAnnotation(AnnotationInstanceSpec.builder(Component.class).build())
             .setSuperClass(AbstractSqlProvider.class)
             .addSuperInterface(ProviderMethodResolver.class);
-
 
         // generate constructors
         builder.addConstructor(constructor());
@@ -120,20 +137,36 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
         builder.addMethod(insertMultiple(table));
 
         // deleteByPrimaryKey
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildDeleteByPrimaryKey(pk)));
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(deleteByPrimaryKey(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildDeleteByPrimaryKeyOrUniqueIndex(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(deleteByPrimaryKeyOrUniqueIndex(pk)));
 
         // updateByPrimaryKey
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildUpdateByPrimaryKey(pk)));
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(updateByPrimaryKey(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildUpdateByPrimaryKeyOrUniqueIndex(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(updateByPrimaryKeyOrUniqueIndex(pk)));
 
         // selectByPrimaryKey
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildSelectByPrimaryKey(pk)));
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(selectByPrimaryKey(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildSelectByPrimaryKeyOrUniqueIndex(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(selectByPrimaryKeyOrUniqueIndex(pk)));
 
         // countByPrimaryKey
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildCountByPrimaryKey(pk)));
-        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(countByPrimaryKey(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(buildCountByPrimaryKeyOrUniqueIndex(pk)));
+        table.getPrimaryKey().ifPresent(pk -> builder.addMethod(countByPrimaryKeyOrUniqueIndex(pk)));
+
+        // unique index
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).forEach(index -> {
+            // delete
+            builder.addMethod(buildDeleteByPrimaryKeyOrUniqueIndex(index));
+            builder.addMethod(deleteByPrimaryKeyOrUniqueIndex(index));
+            // update
+            builder.addMethod(buildUpdateByPrimaryKeyOrUniqueIndex(index));
+            builder.addMethod(updateByPrimaryKeyOrUniqueIndex(index));
+            // select
+            builder.addMethod(buildSelectByPrimaryKeyOrUniqueIndex(index));
+            builder.addMethod(selectByPrimaryKeyOrUniqueIndex(index));
+            // count
+            builder.addMethod(buildCountByPrimaryKeyOrUniqueIndex(index));
+            builder.addMethod(countByPrimaryKeyOrUniqueIndex(index));
+        });
 
         // common
         builder.addMethod(buildSelectOrCountDynamic(table));
@@ -142,8 +175,10 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
         builder.addMethod(buildDeleteDynamic(table));
         builder.addMethod(deleteDynamic());
 
-        builder.addMethod(buildUpdateDynamic(table));
-        builder.addMethod(updateDynamic(table));
+        if (supportColumnInsertOrUpdate) {
+            builder.addMethod(buildUpdateDynamic(table));
+            builder.addMethod(updateDynamic(table));
+        }
 
         // static imports
         builder.addStaticImport(ArgumentSupport.class, "*")
@@ -182,7 +217,7 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
     protected MethodSpec buildInsert(Table table) {
         return MethodSpec.builder(Insert.class, "buildInsert", Modifier.PROTECTED)
             .beginMethodBody()
-            .addStatement("return insertInto($L, COLUMNS).values($T.stream(PARAM_COLUMNS).map(p->p.prefix($T.PARAM_PREFIX)).toArray()).build()", fieldTableName(table), Arrays.class, InsertStatementProvider.class)
+            .addStatement("return insertInto($L, COLUMNS).values($T.stream(PARAM_COLUMNS).map(p->p.prefix($T.PARAM_PREFIX)).toArray()).build()", fieldTableNameTranslator.translate(table), Arrays.class, InsertStatementProvider.class)
             .end()
             .build();
     }
@@ -210,10 +245,10 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .addCode(m -> {
                 for (Column column : table.getColumns()) {
                     String getterName = getterNameTranslator.translate(column);
-                    m.addCode("if ($L.$L() != null) {columns.add($L); params.add($L.prefix($T.PARAM_PREFIX));}", poParamName(table), getterName, fieldColumnName(column), paramColumnName(column), InsertStatementProvider.class);
+                    m.addCode("if ($L.$L() != null) {columns.add($L); params.add($L.prefix($T.PARAM_PREFIX));}", poParamName(table), getterName, fieldColumnNameTranslator.translate(column), paramColumnName(column), InsertStatementProvider.class);
                     m.addNewLine();
                 }
-            }).addStatement("return insertInto($L, columns.toArray(new $T[0])).values(params.toArray(new $T[0])).build()", fieldTableName(table), DefaultAliasedNamedColumn.class, MybatisParam.class)
+            }).addStatement("return insertInto($L, columns.toArray(new $T[0])).values(params.toArray(new $T[0])).build()", fieldTableNameTranslator.translate(table), DefaultAliasedNamedColumn.class, MybatisParam.class)
             .end()
             .build();
     }
@@ -245,7 +280,7 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             })
             .addStatement("paramses[i] = params")
             .endFor()
-            .addStatement("return insertInto($L, COLUMNS).valueses(paramses).build()", fieldTableName(table))
+            .addStatement("return insertInto($L, COLUMNS).valueses(paramses).build()", fieldTableNameTranslator.translate(table))
             .end()
             .build();
     }
@@ -262,18 +297,23 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .build();
     }
 
-    protected MethodSpec buildDeleteByPrimaryKey(PrimaryKey primaryKey) {
-        return MethodSpec.builder(Delete.class, "buildDeleteByPrimaryKey", Modifier.PUBLIC, Modifier.STATIC)
+    protected String nameOfBuildDeleteByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport){
+        return indexSupport instanceof PrimaryKey ? "buildDeleteByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "BUILD_DELETE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+    }
+
+    protected MethodSpec buildDeleteByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table =  indexSupport.getOwner();
+        return MethodSpec.builder(Delete.class, nameOfBuildDeleteByPrimaryKeyOrUniqueIndex(indexSupport), Modifier.PUBLIC, Modifier.STATIC)
             .beginMethodBody()
             .addCode(c -> {
-                c.addCode("return deleteFrom($L).where(", fieldTableName(primaryKey.getOwner()));
-                Column column = primaryKey.getIndexColumns()[0].getColumn();
-                c.addCode("$L.eq($L.prefix($T.PARAM_PREFIX))", fieldColumnName(column), paramColumnName(column), GeneralStatementProvider.class);
-                for (int i = 1; i < primaryKey.getIndexColumns().length; i++) {
-                    column = primaryKey.getIndexColumns()[i].getColumn();
-                    c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnName(column), paramColumnName(column), GeneralStatementProvider.class);
+                c.addCode("return deleteFrom($L).where(", fieldTableNameTranslator.translate(table));
+                Column column = indexSupport.getIndexColumns()[0].getColumn();
+                c.addCode("$L.eq($L.prefix($T.PARAM_PREFIX))", fieldColumnNameTranslator.translate(column), paramColumnName(column), GeneralStatementProvider.class);
+                for (int i = 1; i < indexSupport.getIndexColumns().length; i++) {
+                    column = indexSupport.getIndexColumns()[i].getColumn();
+                    c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnNameTranslator.translate(column), paramColumnName(column), GeneralStatementProvider.class);
                 }
-                TableHelper.findRecordVersionColumn(primaryKey.getOwner()).ifPresent(col -> c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnName(col), paramColumnName(col), GeneralStatementProvider.class));
+                recordVersionColumnFinder.find(table).ifPresent(col -> c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnNameTranslator.translate(col), paramColumnName(col), GeneralStatementProvider.class));
                 c.addCode(").build();");
                 c.addNewLine();
             })
@@ -281,19 +321,21 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .build();
     }
 
-    protected MethodSpec deleteByPrimaryKey(PrimaryKey primaryKey) {
+    protected MethodSpec deleteByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
         String deleteSqlLocalParamName = "deleteSql";
-        Optional<Column> recordVersionColumnOptional = TableHelper.findRecordVersionColumn(primaryKey.getOwner());
-        return MethodSpec.builder(GeneralStatementProvider.class, "deleteByPrimaryKey", Modifier.PUBLIC)
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
+        Table table =  indexSupport.getOwner();
+        String methodName = indexSupport instanceof PrimaryKey ? "deleteByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "DELETE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+        Optional<Column> recordVersionColumnOptional = recordVersionColumnFinder.find(table);
+        return MethodSpec.builder(GeneralStatementProvider.class, methodName, Modifier.PUBLIC)
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
             .add(b -> recordVersionColumnOptional.ifPresent(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
             .beginMethodBody()
             .addCode(b -> {
                 List<TypeName> typeNameList = new ArrayList<>();
-                Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> typeNameList.add(columnToTypeNameTranslator.translate(c)));
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> typeNameList.add(columnToTypeNameTranslator.translate(c)));
                 recordVersionColumnOptional.ifPresent(c -> typeNameList.add(columnToTypeNameTranslator.translate(c)));
                 StringBuilder sb = new StringBuilder();
-                sb.append("String key = buildKey(\"deleteByPrimaryKey\"");
+                sb.append(String.format("String key = buildKey(\"%s\"",methodName));
                 typeNameList.forEach(t -> sb.append(", ").append("$T.class"));
                 sb.append(")");
                 b.addStatement(sb.toString(), typeNameList.toArray());
@@ -301,7 +343,7 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .addStatement("String $L = sqlCache.computeIfAbsent(key, k -> $L.build(buildDeleteByPrimaryKey(), DUMMY_INSTANCE))", deleteSqlLocalParamName, fieldNameSqlBuilder())
             .addCode(cb -> {
                 cb.addCode("return $T.builder($L)", GeneralStatementProviderImpl.class, deleteSqlLocalParamName);
-                Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
                     String columnParamName = columnToParamNameTranslator.translate(c);
                     cb.addCode(".addParam($S, argNotNull($L, $S))", columnParamName, columnParamName, columnParamName);
                 });
@@ -316,42 +358,47 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .build();
     }
 
-    protected MethodSpec buildUpdateByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        return MethodSpec.builder(Update.class, "buildUpdateByPrimaryKey", Modifier.PROTECTED)
+    protected String nameOfBuildUpdateByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport){
+        return indexSupport instanceof PrimaryKey ? "buildUpdateByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "BUILD_UPDATE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+    }
+
+    protected MethodSpec buildUpdateByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        return MethodSpec.builder(Update.class, nameOfBuildUpdateByPrimaryKeyOrUniqueIndex(indexSupport), Modifier.PROTECTED)
             .addParameter(updateClassName(table), updateParamName(table))
             .beginMethodBody()
             .addCode(c -> {
-                c.addCode("return update($L)", fieldTableName(table)).addNewLine().addIndent();
-                Arrays.stream(table.getColumns()).forEach(column -> c.addCode(".set(c -> consumeIfTrue($L::$L, () -> c.set($L, $L.prefix($T.UPDATE_PARAM_PREFIX))))", updateParamName(table), getterUpdatedNameTranslator.translate(column), fieldColumnName(column), paramColumnName(column), UpdateStatementProvider.class).addNewLine());
+                c.addCode("return update($L)", fieldTableNameTranslator.translate(table)).addNewLine().addIndent();
+                Arrays.stream(table.getColumns()).forEach(column -> c.addCode(".set(c -> consumeIfTrue($L::$L, () -> c.set($L, $L.prefix($T.UPDATE_PARAM_PREFIX))))", updateParamName(table), getterUpdatedNameTranslator.translate(column), fieldColumnNameTranslator.translate(column), paramColumnName(column), UpdateStatementProvider.class).addNewLine());
                 c.addCode(".where(");
-                Column column = primaryKey.getIndexColumns()[0].getColumn();
-                c.addCode("$L.eq($L.prefix($T.UPDATE_CONDITION_PREFIX))", fieldColumnName(column), paramColumnName(column), UpdateStatementProvider.class);
-                for (int i = 1; i < primaryKey.getIndexColumns().length; i++) {
-                    column = primaryKey.getIndexColumns()[i].getColumn();
-                    c.addCode(", and($L.eq($L.prefix($T.UPDATE_CONDITION_PREFIX)))", fieldColumnName(column), paramColumnName(column), UpdateStatementProvider.class);
+                Column column = indexSupport.getIndexColumns()[0].getColumn();
+                c.addCode("$L.eq($L.prefix($T.UPDATE_CONDITION_PREFIX))", fieldColumnNameTranslator.translate(column), paramColumnName(column), UpdateStatementProvider.class);
+                for (int i = 1; i < indexSupport.getIndexColumns().length; i++) {
+                    column = indexSupport.getIndexColumns()[i].getColumn();
+                    c.addCode(", and($L.eq($L.prefix($T.UPDATE_CONDITION_PREFIX)))", fieldColumnNameTranslator.translate(column), paramColumnName(column), UpdateStatementProvider.class);
                 }
-                TableHelper.findRecordVersionColumn(primaryKey.getOwner()).ifPresent(col -> c.addCode(", and($L.eq($L.prefix($T.UPDATE_CONDITION_PREFIX)))", fieldColumnName(col), paramColumnName(col), UpdateStatementProvider.class));
+                recordVersionColumnFinder.find(indexSupport.getOwner()).ifPresent(col -> c.addCode(", and($L.eq($L.prefix($T.UPDATE_CONDITION_PREFIX)))", fieldColumnNameTranslator.translate(col), paramColumnName(col), UpdateStatementProvider.class));
                 c.addCode(")").addNewLine().addCode(".build();").addNewLine().removeIndent();
             })
             .end()
             .build();
     }
 
-    protected MethodSpec updateByPrimaryKey(PrimaryKey primaryKey) {
+    protected MethodSpec updateByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
         String localParameterNameOfUpdateSql = "updateSql";
-        Table table = primaryKey.getOwner();
+        final String methodName = indexSupport instanceof PrimaryKey ? "updateByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "UPDATE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+        Table table = indexSupport.getOwner();
         String updateParam = updateParamName(table);
-        Optional<Column> recordVersionColumnOptional = TableHelper.findRecordVersionColumn(primaryKey.getOwner());
-        return MethodSpec.builder(UpdateStatementProvider.class, "updateByPrimaryKey", Modifier.PUBLIC)
+        Optional<Column> recordVersionColumnOptional = recordVersionColumnFinder.find(table);
+        return MethodSpec.builder(UpdateStatementProvider.class, methodName, Modifier.PUBLIC)
             .addParameter(updateClassName(table), updateParam)
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
             .add(b -> recordVersionColumnOptional.ifPresent(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
             .beginMethodBody()
-            .addStatement("String $L = $L.build(buildUpdateByPrimaryKey($L), DUMMY_INSTANCE)", localParameterNameOfUpdateSql, fieldNameSqlBuilder(), updateParam)
+            .addStatement("String $L = $L.build($L($L), DUMMY_INSTANCE)", localParameterNameOfUpdateSql, fieldNameSqlBuilder(),nameOfBuildUpdateByPrimaryKeyOrUniqueIndex(indexSupport), updateParam)
             .addCode(cb -> {
                 cb.addCode("return $T.builder($L, $L)", UpdateStatementProviderImpl.class, localParameterNameOfUpdateSql, updateParam);
-                Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
                     String columnParamName = columnToParamNameTranslator.translate(c);
                     cb.addCode(".addParam($S, argNotNull($L, $S))", columnParamName, columnParamName, columnParamName);
                 });
@@ -366,16 +413,22 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .build();
     }
 
-    protected MethodSpec buildSelectByPrimaryKey(PrimaryKey primaryKey) {
-        return MethodSpec.builder(Select.class, "buildSelectByPrimaryKey", Modifier.PROTECTED)
+    protected String nameOfBuildSelectByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport){
+        return indexSupport instanceof PrimaryKey ? "buildSelectByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "BUILD_SELECT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+    }
+
+    protected MethodSpec buildSelectByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        final String methodName =nameOfBuildSelectByPrimaryKeyOrUniqueIndex(indexSupport);
+        Table table = indexSupport.getOwner();
+        return MethodSpec.builder(Select.class, methodName, Modifier.PROTECTED)
             .beginMethodBody()
             .addCode(c -> {
-                c.addCode("return select($L).from($L).where(", fieldColumnsName(primaryKey.getOwner()), fieldTableName(primaryKey.getOwner()));
-                Column column = primaryKey.getIndexColumns()[0].getColumn();
-                c.addCode("$L.eq($L.prefix($T.PARAM_PREFIX))", fieldColumnName(column), paramColumnName(column), GeneralStatementProvider.class);
-                for (int i = 1; i < primaryKey.getIndexColumns().length; i++) {
-                    column = primaryKey.getIndexColumns()[i].getColumn();
-                    c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnName(column), paramColumnName(column), GeneralStatementProvider.class);
+                c.addCode("return select($L).from($L).where(", fieldColumnsName(table), fieldTableNameTranslator.translate(table));
+                Column column = indexSupport.getIndexColumns()[0].getColumn();
+                c.addCode("$L.eq($L.prefix($T.PARAM_PREFIX))", fieldColumnNameTranslator.translate(column), paramColumnName(column), GeneralStatementProvider.class);
+                for (int i = 1; i < indexSupport.getIndexColumns().length; i++) {
+                    column = indexSupport.getIndexColumns()[i].getColumn();
+                    c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnNameTranslator.translate(column), paramColumnName(column), GeneralStatementProvider.class);
                 }
                 c.addCode(").build();");
                 c.addNewLine();
@@ -384,22 +437,27 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .build();
     }
 
-    protected MethodSpec selectByPrimaryKey(PrimaryKey primaryKey) {
-        String localParamNameOfDeleteSql = "selectSql";
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
-        return MethodSpec.builder(GeneralStatementProvider.class, "selectByPrimaryKey", Modifier.PUBLIC)
+
+    protected MethodSpec selectByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        final String buildMethodName =nameOfBuildSelectByPrimaryKeyOrUniqueIndex(indexSupport);
+        final String methodName = indexSupport instanceof PrimaryKey ? "selectByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "SELECT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+        Table table = indexSupport.getOwner();
+
+        String localParamNameOfSelectSql = "selectSql";
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+        return MethodSpec.builder(GeneralStatementProvider.class, methodName, Modifier.PUBLIC)
             .add(b -> columnList.forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)))).beginMethodBody()
             .addCode(b -> {
                 StringBuilder format = new StringBuilder();
-                format.append("String key = buildKey(\"selectByPrimaryKey\"");
+                format.append(String.format("String key = buildKey(\"%s\"",methodName));
                 columnList.forEach(c -> format.append(", $T.class"));
                 format.append(")");
                 b.addStatement(format.toString(), columnList.stream().map(columnToTypeNameTranslator::translate).toArray());
             })
-            .addStatement("String $L = sqlCache.computeIfAbsent(key, k -> $L.build(buildSelectByPrimaryKey(), DUMMY_INSTANCE))", localParamNameOfDeleteSql, fieldNameSqlBuilder())
+            .addStatement("String $L = sqlCache.computeIfAbsent(key, k -> $L.build($L(), DUMMY_INSTANCE))", localParamNameOfSelectSql, fieldNameSqlBuilder(),buildMethodName)
             .addCode(cb -> {
-                cb.addCode("return $T.builder($L)", GeneralStatementProviderImpl.class, localParamNameOfDeleteSql);
-                Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
+                cb.addCode("return $T.builder($L)", GeneralStatementProviderImpl.class, localParamNameOfSelectSql);
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
                     String columnParamName = columnToParamNameTranslator.translate(c);
                     cb.addCode(".addParam($S, argNotNull($L, $S))", columnParamName, columnParamName, columnParamName);
                 });
@@ -410,16 +468,20 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .build();
     }
 
-    protected MethodSpec buildCountByPrimaryKey(PrimaryKey primaryKey) {
-        return MethodSpec.builder(Select.class, "buildCuntByPrimaryKey", Modifier.PROTECTED)
+    private String nameOfBuildCountByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport){
+        return indexSupport instanceof PrimaryKey ? "buildCountByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "BUILD_COUNT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+    }
+
+    protected MethodSpec buildCountByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return MethodSpec.builder(Select.class, nameOfBuildCountByPrimaryKeyOrUniqueIndex(indexSupport), Modifier.PROTECTED)
             .beginMethodBody()
             .addCode(c -> {
-                c.addCode("return selectCount().from($L).where(", fieldTableName(primaryKey.getOwner()));
-                Column column = primaryKey.getIndexColumns()[0].getColumn();
-                c.addCode("$L.eq($L.prefix($T.PARAM_PREFIX))", fieldColumnName(column), paramColumnName(column), GeneralStatementProvider.class);
-                for (int i = 1; i < primaryKey.getIndexColumns().length; i++) {
-                    column = primaryKey.getIndexColumns()[i].getColumn();
-                    c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnName(column), paramColumnName(column), GeneralStatementProvider.class);
+                c.addCode("return selectCount().from($L).where(", fieldTableNameTranslator.translate(indexSupport.getOwner()));
+                Column column = indexSupport.getIndexColumns()[0].getColumn();
+                c.addCode("$L.eq($L.prefix($T.PARAM_PREFIX))", fieldColumnNameTranslator.translate(column), paramColumnName(column), GeneralStatementProvider.class);
+                for (int i = 1; i < indexSupport.getIndexColumns().length; i++) {
+                    column = indexSupport.getIndexColumns()[i].getColumn();
+                    c.addCode(", and($L.eq($L.prefix($T.PARAM_PREFIX)))", fieldColumnNameTranslator.translate(column), paramColumnName(column), GeneralStatementProvider.class);
                 }
                 c.addCode(").build();");
                 c.addNewLine();
@@ -428,22 +490,24 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .build();
     }
 
-    protected MethodSpec countByPrimaryKey(PrimaryKey primaryKey) {
+    protected MethodSpec countByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        final String methodName = indexSupport instanceof PrimaryKey ? "countByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "COUNT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
         String localParamNameOfDeleteSql = "selectSql";
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
-        return MethodSpec.builder(GeneralStatementProvider.class, "countByPrimaryKey", Modifier.PUBLIC)
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)))).beginMethodBody()
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+        return MethodSpec.builder(GeneralStatementProvider.class, methodName, Modifier.PUBLIC)
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)))).beginMethodBody()
             .addCode(b -> {
                 StringBuilder format = new StringBuilder();
-                format.append("String key = buildKey(\"countByPrimaryKey\"");
+                format.append(String.format("String key = buildKey(\"%s\"",methodName));
                 columnList.forEach(c -> format.append(", $T.class"));
                 format.append(")");
                 b.addStatement(format.toString(), columnList.stream().map(columnToTypeNameTranslator::translate).toArray());
             })
-            .addStatement("String $L = sqlCache.computeIfAbsent(key, k -> $L.build(buildCuntByPrimaryKey(), DUMMY_INSTANCE))", localParamNameOfDeleteSql, fieldNameSqlBuilder())
+            .addStatement("String $L = sqlCache.computeIfAbsent(key, k -> $L.build($L(), DUMMY_INSTANCE))", localParamNameOfDeleteSql, fieldNameSqlBuilder(),nameOfBuildCountByPrimaryKeyOrUniqueIndex(indexSupport))
             .addCode(cb -> {
                 cb.addCode("return $T.builder($L)", GeneralStatementProviderImpl.class, localParamNameOfDeleteSql);
-                Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> {
                     String columnParamName = columnToParamNameTranslator.translate(c);
                     cb.addCode(".addParam($S, argNotNull($L, $S))", columnParamName, columnParamName, columnParamName);
                 });
@@ -462,7 +526,7 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .beginMethodBody()
             .addCode(c -> {
                 c.addCode("return select($L.isCount(), $L.isDistinct(), $T.isEmpty($L.getColumns()) ? $L : $L.getColumns())", queryWrapperParamName, queryWrapperParamName, ObjectHelper.class, queryWrapperParamName, fieldColumnsName(), queryWrapperParamName).addNewLine().addIndent();
-                c.addCode(".from($L)", fieldTableName(table)).addNewLine();
+                c.addCode(".from($L)", fieldTableNameTranslator.translate(table)).addNewLine();
                 c.addCode(".where($L.getCondition())", queryWrapperParamName).addNewLine();
                 c.addCode(".orderBy($T.isNotEmpty($L.getOrderColumns()), $L.getOrderColumns())", ObjectHelper.class, queryWrapperParamName, queryWrapperParamName).addNewLine();
                 c.addCode(".limit($L.getLimit() != null && !$L.isCount(), $L.getLimit())", queryWrapperParamName, queryWrapperParamName, queryWrapperParamName).addNewLine();
@@ -489,7 +553,7 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
         return MethodSpec.builder(Delete.class, "buildDeleteDynamic", Modifier.PUBLIC, Modifier.STATIC)
             .addParameter(Condition.class, conditionParamName)
             .beginMethodBody()
-            .addStatement("return deleteFrom($L).where($L).build()", fieldTableName(table), conditionParamName)
+            .addStatement("return deleteFrom($L).where($L).build()", fieldTableNameTranslator.translate(table), conditionParamName)
             .end()
             .build();
     }
@@ -512,8 +576,8 @@ public class TableToSqlProvider extends AbstractTableToSupport implements Transl
             .addParameter(Condition.class, conditionParamName)
             .beginMethodBody()
             .addCode(c -> {
-                c.addCode("return update($L)", fieldTableName(table)).addNewLine().addIndent();
-                Arrays.stream(table.getColumns()).forEach(column -> c.addCode(".set(c -> consumeIfTrue($L::$L, () -> c.set($L, $L.$L())))", columnUpdateParamName, getterUpdatedNameTranslator.translate(column), fieldColumnName(column), columnUpdateParamName, getterNameTranslator.translate(column)).addNewLine());
+                c.addCode("return update($L)", fieldTableNameTranslator.translate(table)).addNewLine().addIndent();
+                Arrays.stream(table.getColumns()).forEach(column -> c.addCode(".set(c -> consumeIfTrue($L::$L, () -> c.set($L, $L.$L())))", columnUpdateParamName, getterUpdatedNameTranslator.translate(column), fieldColumnNameTranslator.translate(column), columnUpdateParamName, getterNameTranslator.translate(column)).addNewLine());
                 c.addCode(".where($L)", conditionParamName).addNewLine();
                 c.addCode(".build();").addNewLine().removeIndent();
             })

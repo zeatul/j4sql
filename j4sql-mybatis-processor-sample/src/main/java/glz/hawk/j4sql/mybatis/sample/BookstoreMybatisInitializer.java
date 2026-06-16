@@ -16,15 +16,15 @@
 
 package glz.hawk.j4sql.mybatis.sample;
 
-import glz.hawk.j4sql.mybatis.annotation.J4sqlMybatisGenerator;
-import glz.hawk.j4sql.mybatis.annotation.PackageMaps;
+import glz.hawk.j4sql.mybatis.annotation.J4sqlMybatisGeneratorDef;
+import glz.hawk.jdesigner.generator.annotation.PackageMaps;
 
 /**
  * This class is responsible for
  *
  * @author Hawk
  */
-@J4sqlMybatisGenerator(scanPackages = {"glz.hawk.bookstore.designer.meta", "glz.hawk.bookstore.designer.database"},
+@J4sqlMybatisGeneratorDef(scanPackages = {"glz.hawk.bookstore.designer.meta", "glz.hawk.bookstore.designer.database"},
     resourceCollectors = {"glz.hawk.bookstore.designer.BookstoreModelIndexer"},
     poClassPackageMaps = @PackageMaps(namespacePackageMaps = {@PackageMaps.NamespacePackageMap(namespace = "glz.hawk.bookstore.designer.database", packageName = "glz.hawk.bookstore.persist.po")}),
     updateClassPackageMaps = @PackageMaps(namespacePackageMaps = {@PackageMaps.NamespacePackageMap(namespace = "glz.hawk.bookstore.designer.database", packageName = "glz.hawk.bookstore.persist.update")}),
@@ -32,9 +32,13 @@ import glz.hawk.j4sql.mybatis.annotation.PackageMaps;
     mapperClassPackageMaps = @PackageMaps(namespacePackageMaps = {@PackageMaps.NamespacePackageMap(namespace = "glz.hawk.bookstore.designer.database", packageName = "glz.hawk.bookstore.persist.mapper")}),
     sqlProviderClassPackageMaps = @PackageMaps(namespacePackageMaps = {@PackageMaps.NamespacePackageMap(namespace = "glz.hawk.bookstore.designer.database", packageName = "glz.hawk.bookstore.persist.sql.provider")}),
     repositoryClassPackageMaps = @PackageMaps(namespacePackageMaps = {@PackageMaps.NamespacePackageMap(namespace = "glz.hawk.bookstore.designer.database", packageName = "glz.hawk.bookstore.persist.repository")}),
+    abstractRepositoryClassPackageMaps = @PackageMaps(namespacePackageMaps = {@PackageMaps.NamespacePackageMap(namespace = "glz.hawk.bookstore.designer.database", packageName = "glz.hawk.bookstore.persist.repository.abs")}),
     repositoryImplClassPackageMaps = @PackageMaps(namespacePackageMaps = {@PackageMaps.NamespacePackageMap(namespace = "glz.hawk.bookstore.designer.database", packageName = "glz.hawk.bookstore.persist.repository.impl")}),
     ddlPackageName = "ddl",
-    dialectNames = {"mysql", "oracle"}
+    dialectName = "mysql",
+    supportColumnInsertOrUpdate = true,
+    tableEnumClassPackage = "glz.hawk.bookstore.persist.support.enums",
+    tableEnumClassName = "BookstoreTables"
 )
 public class BookstoreMybatisInitializer {
 }

@@ -17,8 +17,13 @@
 package glz.hawk.j4sql.util;
 
 import glz.hawk.j4sql.condition.Condition;
+import glz.hawk.j4sql.condition.ConnectCondition;
+import glz.hawk.j4sql.condition.impl.IgnorableCondition;
+import glz.hawk.j4sql.condition.impl.IgnorableConnectCondition;
 import glz.hawk.j4sql.support.OrderColumn;
 import glz.hawk.j4sql.support.SelectColumn;
+
+import java.util.function.Supplier;
 
 /**
  * This class is responsible for
@@ -33,7 +38,7 @@ public class QueryWrapper {
     private final OrderColumn[] orderColumns;
     private final Long offset;
     private final Long limit;
-    private final boolean forUpdate ;
+    private final boolean forUpdate;
 
     private QueryWrapper(Builder builder) {
         this.distinct = builder.distinct;
@@ -46,19 +51,12 @@ public class QueryWrapper {
         this.forUpdate = builder.forUpdate;
     }
 
-    public static Builder builder(){
+    public static Builder builder() {
         return new Builder();
     }
 
-    public Builder getBuilder(){
-        return new Builder()
-            .setDistinct(distinct)
-            .setCount(count)
-            .setColumns(columns)
-            .setCondition(condition)
-            .setOrderColumns(orderColumns)
-            .setOffsetAndLimit(offset,limit)
-            .setForUpdate(forUpdate);
+    public Builder getBuilder() {
+        return new Builder().setDistinct(distinct).setCount(count).setColumns(columns).setCondition(condition).setOrderColumns(orderColumns).setOffsetAndLimit(offset, limit).setForUpdate(forUpdate);
     }
 
     public SelectColumn[] getColumns() {
@@ -85,7 +83,7 @@ public class QueryWrapper {
         return this.limit;
     }
 
-    public boolean isForUpdate(){
+    public boolean isForUpdate() {
         return this.forUpdate;
     }
 
@@ -118,8 +116,33 @@ public class QueryWrapper {
             return this;
         }
 
+        public Builder setCondition(Supplier<Condition> conditionSupplier) {
+            this.condition = conditionSupplier.get();
+            return this;
+        }
+
+        public Builder setCondition(ConditionBuilder conditionBuilder) {
+            this.condition = conditionBuilder.build();
+            return this;
+        }
+
         public Builder setCondition(Condition condition) {
             this.condition = condition;
+            return this;
+        }
+
+        public Builder setCondition(Condition condition, ConnectCondition... connectConditions) {
+            this.condition = ConditionBuilder.builder(condition, connectConditions).build();
+            return this;
+        }
+
+        public Builder setCondition(Condition condition, IgnorableConnectCondition... ignorableConnectCondition) {
+            this.condition = ConditionBuilder.builder(condition, ignorableConnectCondition).build();
+            return this;
+        }
+
+        public Builder setCondition(IgnorableCondition ignorableCondition, IgnorableConnectCondition... ignorableConnectCondition) {
+            this.condition = ConditionBuilder.builder(ignorableCondition, ignorableConnectCondition).build();
             return this;
         }
 
@@ -134,7 +157,7 @@ public class QueryWrapper {
             return this;
         }
 
-        public Builder setForUpdate(boolean forUpdate){
+        public Builder setForUpdate(boolean forUpdate) {
             this.forUpdate = forUpdate;
             return this;
         }

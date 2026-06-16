@@ -17,8 +17,8 @@
 package glz.hawk.j4sql.support.impl;
 
 import glz.hawk.j4sql.support.Expression;
-import glz.hawk.j4sql.support.SelectExpressionColumn;
 import glz.hawk.j4sql.support.ExpressionOperator;
+import glz.hawk.j4sql.support.SelectExpressionColumn;
 import glz.hawk.j4sql.support.SqlColumn;
 
 import javax.annotation.Nonnull;

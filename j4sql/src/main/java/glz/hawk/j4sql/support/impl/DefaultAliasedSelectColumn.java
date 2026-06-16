@@ -22,6 +22,7 @@ import glz.hawk.j4sql.support.SelectColumn;
 
 import javax.annotation.Nonnull;
 
+import static glz.hawkframework.core.support.ArgumentSupport.argNotBlank;
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 
 /**
@@ -45,7 +46,7 @@ public class DefaultAliasedSelectColumn<T extends SelectColumn> extends Abstract
     }
 
     public DefaultAliasedSelectColumn(T sourceColumn, String aliasName) {
-        this(sourceColumn, new DefaultAlias(aliasName));
+        this(sourceColumn, new DefaultAlias(argNotBlank(aliasName, "aliasName")));
     }
 
     @Nonnull

@@ -22,13 +22,27 @@ import glz.hawk.j4sql.support.SelectColumn;
 import glz.hawk.j4sql.support.SortType;
 
 import javax.annotation.Nonnull;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 
 /**
  * This class is responsible for
  *
  * @author Hawk
  */
-public class AbstractSelectColumn extends AbstractSqlColumn implements SelectColumn {
+public abstract class AbstractSelectColumn extends AbstractSqlColumn implements SelectColumn {
+
+    private final Map<String, Object> extensions = new HashMap<>();
+
+    protected AbstractSelectColumn() {
+    }
+
+    protected AbstractSelectColumn(Map<String, Object> extensions) {
+        if (extensions != null) this.extensions.putAll(extensions);
+    }
 
     @Nonnull
     @Override
@@ -55,4 +69,14 @@ public class AbstractSelectColumn extends AbstractSqlColumn implements SelectCol
         return new DefaultAliasedSelectColumn<>((T) this, aliasName);
     }
 
+    @SuppressWarnings("unchecked")
+    @Override
+    public <T> Optional<T> getExtension(String key, Class<T> tClass) {
+        return Optional.ofNullable((T) extensions.get(argNotNull(key, "key")));
+    }
+
+    @Override
+    public Optional<Object> getExtension(String key) {
+        return Optional.ofNullable(extensions.get(argNotNull(key, "key")));
+    }
 }

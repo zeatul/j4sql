@@ -16,9 +16,9 @@
 
 package glz.hawk.j4sql.writer.impl;
 
+import glz.hawk.codepoet.core.AbstractCodeWriter;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.support.*;
-import glz.hawk.codepoet.core.AbstractCodeWriter;
 
 import java.io.IOException;
 import java.time.LocalDate;

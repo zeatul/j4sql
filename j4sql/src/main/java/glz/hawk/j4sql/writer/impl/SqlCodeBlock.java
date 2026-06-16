@@ -16,12 +16,12 @@
 
 package glz.hawk.j4sql.writer.impl;
 
+import glz.hawk.codepoet.core.AbstractCodeBlock;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.support.Keyword;
 import glz.hawk.j4sql.support.OrderColumn;
 import glz.hawk.j4sql.support.SqlColumn;
 import glz.hawk.j4sql.support.SqlTable;
-import glz.hawk.codepoet.core.AbstractCodeBlock;
 
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 import static glz.hawkframework.core.support.ArgumentSupport.argument;

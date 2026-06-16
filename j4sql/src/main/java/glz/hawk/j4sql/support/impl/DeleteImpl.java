@@ -16,6 +16,9 @@
 
 package glz.hawk.j4sql.support.impl;
 
+import glz.hawk.j4sql.condition.Condition;
+import glz.hawk.j4sql.condition.ConnectCondition;
+import glz.hawk.j4sql.condition.Connector;
 import glz.hawk.j4sql.dsl.delete.Delete;
 import glz.hawk.j4sql.dsl.delete.DeleteDeleteFromStep;
 import glz.hawk.j4sql.dsl.delete.after.AfterDeleteDeleteFromClauseStep;
@@ -23,9 +26,6 @@ import glz.hawk.j4sql.dsl.delete.after.AfterDeleteJoinClauseStep;
 import glz.hawk.j4sql.dsl.delete.after.AfterDeleteOnClauseStep;
 import glz.hawk.j4sql.dsl.delete.after.AfterDeleteWhereClauseStep;
 import glz.hawk.j4sql.support.*;
-import glz.hawk.j4sql.condition.Condition;
-import glz.hawk.j4sql.condition.ConnectCondition;
-import glz.hawk.j4sql.condition.Connector;
 
 import javax.annotation.Nonnull;
 

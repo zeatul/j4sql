@@ -16,17 +16,17 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
-import glz.hawk.jdesigner.spec.database.Column;
-import glz.hawk.jdesigner.spec.database.PrimaryKey;
-import glz.hawk.jdesigner.spec.database.Table;
-import glz.hawk.jdesigner.translator.Translator;
 import glz.hawk.codepoet.java.InterfaceSpec;
 import glz.hawk.codepoet.java.JavaFile;
 import glz.hawk.codepoet.java.MethodSpec;
 import glz.hawk.codepoet.java.type.TypeName;
+import glz.hawk.jdesigner.spec.database.*;
+import glz.hawk.jdesigner.translator.Translator;
 
 import javax.annotation.Nonnull;
 import javax.lang.model.element.Modifier;
+
+import java.util.Arrays;
 
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 
@@ -38,22 +38,27 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 public class TableToRepository extends AbstractTableToRepository implements Translator<Table, JavaFile> {
 
 
-    public TableToRepository(Translator<Table, String> repositoryPackageTranslator, Translator<Table, String> repositoryClassNameTranslator,
-                             Translator<Table, String> poPackageTranslator, Translator<Table, String> poClassNameTranslator,
-                             Translator<Column, String> columnToParamNameTranslator, Translator<Column, TypeName> columnToTypeNameTranslator,
-                             Translator<Table, String> updateClassPackageTranslator, Translator<Table, String> updateClassNameTranslator,
-                             Translator<Table, String> columnUpdateClassNameTranslator) {
+    public TableToRepository(Translator<Table, String> repositoryPackageTranslator,
+                             Translator<Table, String> repositoryClassNameTranslator,
+                             Translator<Table, String> poPackageTranslator,
+                             Translator<Table, String> poClassNameTranslator,
+                             Translator<Column, String> columnToParamNameTranslator,
+                             Translator<Column, TypeName> columnToTypeNameTranslator,
+                             Translator<Table, String> updateClassPackageTranslator,
+                             Translator<Table, String> updateClassNameTranslator,
+                             Translator<Table, String> columnUpdateClassNameTranslator,
+                             ColumnFinder recordVersionColumnFinder,
+                             boolean supportColumnInsertOrUpdate) {
         super(repositoryPackageTranslator, repositoryClassNameTranslator, poPackageTranslator, poClassNameTranslator,
             columnToParamNameTranslator, columnToTypeNameTranslator, updateClassPackageTranslator, updateClassNameTranslator,
-            columnUpdateClassNameTranslator);
+            columnUpdateClassNameTranslator, recordVersionColumnFinder,supportColumnInsertOrUpdate);
     }
 
     @Nonnull
     @Override
     public JavaFile translate(@Nonnull Table table) {
 
-        argNotNull(table, "table");
-        String className = repositoryClassNameTranslator.translate(table);
+        String className = repositoryClassNameTranslator.translate(argNotNull(table, "table"));
         InterfaceSpec.Builder builder = InterfaceSpec.builder(className).addModifier(Modifier.PUBLIC);
 
         // insert
@@ -71,44 +76,65 @@ public class TableToRepository extends AbstractTableToRepository implements Tran
 //        builder.addMethod(insertBatch(table));
 
         // deleteByPrimaryKey
-        table.getPrimaryKey().map(this::deleteByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::deleteByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // updateByPrimaryKey
-        table.getPrimaryKey().map(this::updateByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::updateByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // getByPrimaryKey
-        table.getPrimaryKey().map(this::getByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::getByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // loadByPrimaryKey
-        table.getPrimaryKey().map(this::loadByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::loadByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // loadByPrimaryKeyWithThrow
-        table.getPrimaryKey().map(this::loadWithThrowByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::loadWithThrowByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // existByPrimaryKey
-        table.getPrimaryKey().map(this::existByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::existByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // assertExistByPrimaryKey
-        table.getPrimaryKey().map(this::assertExistByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::assertExistByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // assertExistWithThrowByPrimaryKey
-        table.getPrimaryKey().map(this::assertExistWithThrowByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::assertExistWithThrowByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
-        // common
-        builder.addMethod(queryOne(table));
-        builder.addMethod(queryMany(table));
-        builder.addMethod(cursor(table));
-        builder.addMethod(loadOne(table));
-        builder.addMethod(loadOneWithThrow(table));
-        builder.addMethod(count());
-        builder.addMethod(exist());
-        builder.addMethod(assertExist());
-        builder.addMethod(assertExistWithThrow());
-        builder.addMethod(existOne());
-        builder.addMethod(assertExistOne());
-        builder.addMethod(assertExistOneWithThrow());
-        builder.addMethod(delete());
-        builder.addMethod(update(table));
+        // unique index
+        // delete
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::deleteByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // update
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::updateByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // get
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::getByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // load
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::loadByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // load with throw
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::loadWithThrowByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // exist
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::existByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // assert exist
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::assertExistByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // assert exist with throw
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::assertExistWithThrowByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+
+//        // common
+//        builder.addMethod(queryOne(table));
+//        builder.addMethod(queryMany(table));
+//        builder.addMethod(cursor(table));
+//        builder.addMethod(loadOne(table));
+//        builder.addMethod(loadOneWithThrow(table));
+//        builder.addMethod(count());
+//        builder.addMethod(exist());
+//        builder.addMethod(assertExist());
+//        builder.addMethod(assertExistWithThrow());
+//        builder.addMethod(existOne());
+//        builder.addMethod(assertExistOne());
+//        builder.addMethod(assertExistOneWithThrow());
+//        builder.addMethod(delete());
+//
+//        if (supportColumnInsertOrUpdate) {
+//            builder.addMethod(update(table));
+//        }
 
         return JavaFile.builder(repositoryClassPackageTranslator.translate(table), builder.build()).build();
     }
@@ -129,36 +155,36 @@ public class TableToRepository extends AbstractTableToRepository implements Tran
         return insertMultipleBuilder(table).build();
     }
 
-    protected MethodSpec deleteByPrimaryKey(PrimaryKey primaryKey) {
-        return deleteByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec deleteByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return deleteByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
-    protected MethodSpec updateByPrimaryKey(PrimaryKey primaryKey) {
-        return updateByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec updateByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return updateByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
-    protected MethodSpec getByPrimaryKey(PrimaryKey primaryKey) {
-        return getByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec getByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return getByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
-    protected MethodSpec loadByPrimaryKey(PrimaryKey primaryKey) {
-        return loadByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec loadByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return loadByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
-    protected MethodSpec loadWithThrowByPrimaryKey(PrimaryKey primaryKey) {
-        return loadWithThrowByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec loadWithThrowByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return loadWithThrowByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
-    protected MethodSpec existByPrimaryKey(PrimaryKey primaryKey) {
-        return existByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec existByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return existByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
-    protected MethodSpec assertExistByPrimaryKey(PrimaryKey primaryKey) {
-        return assertExistByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec assertExistByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return assertExistByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
-    protected MethodSpec assertExistWithThrowByPrimaryKey(PrimaryKey primaryKey) {
-        return assertExistWithThrowByPrimaryKeyBuilder(primaryKey).build();
+    protected MethodSpec assertExistWithThrowByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        return assertExistWithThrowByPrimaryKeyOrUniqueIndexBuilder(indexSupport).build();
     }
 
     protected MethodSpec queryOne(Table table) {

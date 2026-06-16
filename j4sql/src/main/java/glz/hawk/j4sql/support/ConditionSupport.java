@@ -22,6 +22,7 @@ import glz.hawk.j4sql.condition.Connector;
 import glz.hawk.j4sql.support.impl.JoinInfo;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.List;
 
 /**
@@ -41,7 +42,13 @@ public interface ConditionSupport {
 
     void addNotCondition(Connector connector, Condition condition, ConnectCondition... connectConditions);
 
-    void addWhere(Condition condition, ConnectCondition... connectConditions);
+    /**
+     * If the value of {@code condition} is {@code null}, ignore all conditions.
+     *
+     * @param condition
+     * @param connectConditions
+     */
+    void addWhere(@Nullable Condition condition, ConnectCondition... connectConditions);
 
     Condition getWhere();
 }

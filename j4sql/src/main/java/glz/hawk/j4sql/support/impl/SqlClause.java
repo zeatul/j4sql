@@ -69,18 +69,23 @@ public enum SqlClause {
     SET_CLAUSE,
 
     // delete from table
-    DELETE_FROM_CLAUSE;
+    DELETE_FROM_CLAUSE,
+
+    // case when end
+    CASE_WHEN_CLAUSE;
 
     public boolean outputColumnName() {
-        return this == SELECT_CLAUSE || this == WHERE_CLAUSE || this == HAVING_CLAUSE || this == SET_CLAUSE
+        return this == SELECT_CLAUSE || this == WHERE_CLAUSE || this == HAVING_CLAUSE || this == SET_CLAUSE || this == ON_CLAUSE
             || this == GROUP_BY_CLAUSE || this == SELECT_FUNCTION_COLUMN_CLAUSE || this == SELECT_EXPRESSION_COLUMN_CLAUSE;
     }
 
     public boolean outputColumnAlias() {
-        return this == SELECT_CLAUSE || this == ON_CLAUSE;
+        return this == SELECT_CLAUSE;
     }
 
-    public boolean parameterable() {
-        return this == WHERE_CLAUSE || this == LIMIT_CLAUSE || this == OFFSET_CLAUSE || this == HAVING_CLAUSE;
+    public boolean parameterizable() {
+        return this == WHERE_CLAUSE || this == LIMIT_CLAUSE || this == OFFSET_CLAUSE || this == HAVING_CLAUSE
+            || this == SELECT_EXPRESSION_COLUMN_CLAUSE || this == SELECT_FUNCTION_COLUMN_CLAUSE
+            || this == CASE_WHEN_CLAUSE;
     }
 }

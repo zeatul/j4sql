@@ -5,11 +5,9 @@ plugins {
 description = 'J4sql seamlessly integrates with MyBatis, completely eliminating the need to write SQL in XML while delivering full database-agnostic capabilities.'
 
 dependencies {
-    implementation 'io.github.zeatul:hawk-core'
-    implementation project(':j4sql')
-    implementation 'io.github.zeatul:codepoet-core'
-    implementation 'org.mybatis:mybatis'
-    implementation 'org.springframework:spring-beans'
-    implementation 'org.mybatis:mybatis-spring'
+    api project(':j4sql')
+    api 'org.mybatis:mybatis'
+    api 'org.springframework:spring-beans'
+    api 'org.mybatis:mybatis-spring'
 }
 

@@ -21,6 +21,8 @@ import glz.hawk.j4sql.support.NamedColumn;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
+import java.util.Map;
+
 import static glz.hawkframework.core.support.ArgumentSupport.argNotBlank;
 
 /**
@@ -39,6 +41,18 @@ public class DefaultNamedColumn extends AbstractSelectColumn implements NamedCol
     }
 
     public DefaultNamedColumn(String columnName) {
+        this.tableName = null;
+        this.columnName = columnName;
+    }
+
+    public DefaultNamedColumn(String tableName, String columnName, Map<String, Object> extensions) {
+        super(extensions);
+        this.tableName = argNotBlank(tableName, "tableName");
+        this.columnName = argNotBlank(columnName, "columnName");
+    }
+
+    public DefaultNamedColumn(String columnName, Map<String, Object> extensions) {
+        super(extensions);
         this.tableName = null;
         this.columnName = columnName;
     }

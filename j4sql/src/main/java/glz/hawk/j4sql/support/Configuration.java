@@ -32,4 +32,6 @@ public interface Configuration {
 
     boolean isInline();
 
+    String getDefaultSchema();
+
 }

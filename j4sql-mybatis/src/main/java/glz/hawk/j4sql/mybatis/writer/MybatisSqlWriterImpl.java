@@ -44,7 +44,7 @@ public class MybatisSqlWriterImpl extends SqlWriterImpl<MybatisBuilderContext> {
     protected void emitValue(Object value) throws IOException {
         SqlClause sqlClause = builderContext.getBuildStack().peek();
         assert (sqlClause != null);
-        if (!sqlClause.parameterable()) {
+        if (!sqlClause.parameterizable()) {
             super.emitValue(value);
             return;
         }

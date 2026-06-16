@@ -16,6 +16,8 @@
 
 package glz.hawk.j4sql.support.impl;
 
+import glz.hawk.j4sql.support.DefaultPhysicalColumn;
+import glz.hawk.j4sql.support.PhysicalColumn;
 import glz.hawk.j4sql.support.PhysicalTable;
 
 import javax.annotation.Nonnull;
@@ -53,5 +55,16 @@ public class DefaultPhysicalTable extends AbstractSqlTable implements PhysicalTa
     @Override
     public String getSchema() {
         return schema;
+    }
+
+    @Nonnull
+    @Override
+    public DefaultPhysicalTable schema(String newSchema) {
+        return newSchema == null ? new DefaultPhysicalTable(tableName) : new DefaultPhysicalTable(newSchema, tableName);
+    }
+
+    @Override
+    public PhysicalColumn column(String columnName) {
+        return new DefaultPhysicalColumn(this, columnName);
     }
 }

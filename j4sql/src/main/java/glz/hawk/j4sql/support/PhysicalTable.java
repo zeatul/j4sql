@@ -30,4 +30,9 @@ public interface PhysicalTable extends SqlTable {
 
     @Nonnull
     String getTableName();
+
+    @Nonnull
+    PhysicalTable schema(String newSchema);
+
+    PhysicalColumn column(String columnName);
 }

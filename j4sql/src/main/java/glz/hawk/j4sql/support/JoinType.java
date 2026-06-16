@@ -24,27 +24,27 @@ package glz.hawk.j4sql.support;
 public enum JoinType implements Keyword {
     INNER_JOIN {
         public String toSql(Configuration configuration) {
-            return "INNER_JOIN";
+            return "INNER JOIN";
         }
     },
     CROSS_JOIN {
         public String toSql(Configuration configuration) {
-            return "CROSS_JOIN";
+            return "CROSS JOIN";
         }
     },
     FULL_OUTER_JOIN {
         public String toSql(Configuration configuration) {
-            return "FULL_OUTER_JOIN";
+            return "FULL OUTER JOIN";
         }
     },
     LEFT_OUTER_JOIN {
         public String toSql(Configuration configuration) {
-            return "LEFT_OUTER_JOIN";
+            return "LEFT OUTER JOIN";
         }
     },
     RIGHT_OUTER_JOIN {
         public String toSql(Configuration configuration) {
-            return "RIGHT_OUTER_JOIN";
+            return "RIGHT OUTER JOIN";
         }
     }
 }

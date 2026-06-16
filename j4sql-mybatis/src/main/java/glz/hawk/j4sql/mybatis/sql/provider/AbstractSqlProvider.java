@@ -16,14 +16,14 @@
 
 package glz.hawk.j4sql.mybatis.sql.provider;
 
-import glz.hawkframework.core.helper.ObjectHelper;
-import glz.hawk.j4sql.mybatis.writer.MybatisBuilderContext;
-import glz.hawk.j4sql.mybatis.statement.GeneralStatementProvider;
 import glz.hawk.j4sql.dsl.delete.Delete;
 import glz.hawk.j4sql.dsl.insert.Insert;
 import glz.hawk.j4sql.dsl.select.Select;
 import glz.hawk.j4sql.dsl.update.Update;
+import glz.hawk.j4sql.mybatis.statement.GeneralStatementProvider;
+import glz.hawk.j4sql.mybatis.writer.MybatisBuilderContext;
 import glz.hawk.j4sql.support.SqlBuilder;
+import glz.hawkframework.core.helper.ObjectHelper;
 
 import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;

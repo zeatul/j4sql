@@ -16,11 +16,14 @@
 
 package glz.hawk.j4sql.condition.impl;
 
-import glz.hawk.j4sql.condition.Connector;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.condition.ConnectCondition;
+import glz.hawk.j4sql.condition.Connector;
+
+import javax.annotation.Nonnull;
 
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
+import static glz.hawkframework.core.support.ArgumentSupport.argument;
 
 /**
  * This class is responsible for
@@ -34,7 +37,7 @@ public class DefaultConnectCondition implements ConnectCondition {
 
     private DefaultConnectCondition(Connector connector, Condition condition) {
         this.connector = argNotNull(connector, "connector");
-        this.condition = argNotNull(condition, "condition");
+        this.condition = argument(argNotNull(condition, "condition"), c -> !(c instanceof EmptyCondition), c -> "The condition must not be an EmptyCondition.");
     }
 
     public static DefaultConnectCondition and(Condition condition) {
@@ -45,15 +48,17 @@ public class DefaultConnectCondition implements ConnectCondition {
         return new DefaultConnectCondition(Connector.OR, condition);
     }
 
-    public static DefaultConnectCondition of(Connector connector,Condition condition) {
+    public static DefaultConnectCondition of(Connector connector, Condition condition) {
         return new DefaultConnectCondition(connector, condition);
     }
 
+    @Nonnull
     @Override
     public Connector getConnector() {
         return this.connector;
     }
 
+    @Nonnull
     @Override
     public Condition getCondition() {
         return this.condition;

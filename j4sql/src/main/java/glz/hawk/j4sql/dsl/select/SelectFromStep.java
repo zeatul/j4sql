@@ -16,8 +16,9 @@
 
 package glz.hawk.j4sql.dsl.select;
 
-import glz.hawk.j4sql.support.SqlTable;
 import glz.hawk.j4sql.dsl.select.after.AfterSelectFromClauseStep;
+import glz.hawk.j4sql.dsl.select.after.AfterSelectHintClauseStep;
+import glz.hawk.j4sql.support.SqlTable;
 
 import javax.annotation.Nonnull;
 
@@ -38,7 +39,7 @@ public interface SelectFromStep {
      * Add an Oracle-style hint to the preceding select clause.
      */
     @Nonnull
-    AfterSelectFromClauseStep hint(String hint);
+    AfterSelectHintClauseStep hint(String hint);
 
 
 }

@@ -5,14 +5,11 @@ plugins {
 description = 'Examples of using j4sql-mybatis-processor and j4sql-mybatis-annotations, with model definitions from the bookstore example project of jdesigner.'
 
 dependencies {
-    implementation 'io.github.zeatul:hawk-core'
-    implementation 'io.github.zeatul:hawk-dao-base'
-    implementation project(':j4sql')
-    implementation project(':j4sql-mybatis')
-
-    implementation project(':j4sql-mybatis-annotations')
-    implementation 'org.mybatis:mybatis'
-    implementation 'org.springframework:spring-context'
+    api project(':j4sql-mybatis-generator')
+    api project(':j4sql-mybatis-annotations')
+    implementation 'io.github.zeatul:bookstore-annotations'
+    api 'io.github.zeatul:hawk-dao-base'
+    api 'io.github.zeatul:hawk-validator'
 
     annotationProcessor project(':j4sql-mybatis-processor')
     annotationProcessor 'io.github.zeatul:bookstore-designer'

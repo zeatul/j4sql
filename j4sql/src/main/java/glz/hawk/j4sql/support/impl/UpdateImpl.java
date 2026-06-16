@@ -47,15 +47,8 @@ public class UpdateImpl implements Update, UpdateUpdateStep, AfterUpdateUpdateCl
 
     @Nonnull
     @Override
-    public AfterUpdateUpdateClauseStep update(PhysicalTable updateTable) {
-        updateQuery.addUpdateTable(updateTable);
-        return this;
-    }
-
-    @Nonnull
-    @Override
-    public AfterUpdateUpdateClauseStep update(AliasedSqlTable<PhysicalTable> aliasedUpdateTable) {
-        updateQuery.addUpdateTable(aliasedUpdateTable);
+    public AfterUpdateUpdateClauseStep update(SqlTable... updateTables) {
+        updateQuery.addUpdateTable(updateTables);
         return this;
     }
 

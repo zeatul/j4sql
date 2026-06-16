@@ -16,8 +16,8 @@
 
 package glz.hawk.j4sql.mybatis.mapper;
 
-import glz.hawk.j4sql.mybatis.statement.GeneralStatementProvider;
 import glz.hawk.j4sql.mybatis.sql.provider.SqlProviderAdapter;
+import glz.hawk.j4sql.mybatis.statement.GeneralStatementProvider;
 import org.apache.ibatis.annotations.DeleteProvider;
 
 /**

@@ -34,7 +34,7 @@ import static glz.hawk.j4sql.support.impl.DSL.*;
  * @author Hawk
  */
 public class DeleteTest {
-    private final Configuration configuration = new DefaultConfiguration();
+    private final Configuration configuration = DefaultConfiguration.builder().build();
     private final PhysicalTable BOOK = tab("BOOK");
     private final AliasedSqlTable<PhysicalTable> ALIASED_BOOK = BOOK.as("t");
     private final NamedColumn BOOK_ID = col("BOOK_ID");

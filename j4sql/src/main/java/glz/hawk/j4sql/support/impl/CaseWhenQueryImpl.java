@@ -1,0 +1,66 @@
+/*
+ * Copyright 2025-2026 the original author or authors.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package glz.hawk.j4sql.support.impl;
+
+import glz.hawk.j4sql.support.CaseWhenQuery;
+import glz.hawk.j4sql.support.SqlColumn;
+import glz.hawk.j4sql.support.WhenTenPair;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
+
+import javax.annotation.Nonnull;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+
+import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
+
+public class CaseWhenQueryImpl implements CaseWhenQuery {
+    private SqlColumn caseColumn;
+    private SqlColumn elseColumn;
+    private final List<WhenTenPair> whenTenPairs = new ArrayList<>();
+
+    @Override
+    public @Nullable SqlColumn getCase() {
+        return caseColumn;
+    }
+
+    @Override
+    public @NonNull List<WhenTenPair> getWhenThenPairs() {
+        return Collections.unmodifiableList(whenTenPairs);
+    }
+
+    @Override
+    public @Nullable SqlColumn getElse() {
+        return elseColumn;
+    }
+
+    @Override
+    public void setCase(@Nonnull SqlColumn caseColumn) {
+        this.caseColumn = argNotNull(caseColumn, "caseColumn");
+    }
+
+    @Override
+    public void setElse(@Nonnull SqlColumn elseColumn) {
+        this.elseColumn = argNotNull(elseColumn, "elseColumn");
+    }
+
+    @Override
+    public void addWhenThenPair(@NonNull WhenTenPair whenTenPair) {
+        this.whenTenPairs.add(argNotNull(whenTenPair, "whenTenPair"));
+    }
+}

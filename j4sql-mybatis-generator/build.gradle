@@ -1,0 +1,11 @@
+plugins {
+    id 'buildlogic.java-library-conventions'
+}
+
+description = 'Maintains the logic for generating j4sql-mybatis code based on the jdesigner model.'
+
+dependencies {
+    api project(':j4sql-mybatis-translator')
+    api 'io.github.zeatul:jdesigner-generator'
+    api 'io.github.zeatul:ddlpoet'
+}

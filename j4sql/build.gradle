@@ -5,7 +5,11 @@ plugins {
 description = 'JOOQ-style, write type-safe SQL in Java with robust syntax validation, database-agnostic design, and automatic dialect adaptation based on DataSource or database configuration.'
 
 dependencies {
-    implementation 'io.github.zeatul:hawk-core'
-    implementation 'io.github.zeatul:codepoet-core'
-    implementation 'org.slf4j:slf4j-api'
+    api 'io.github.zeatul:hawk-core'
+    api 'io.github.zeatul:codepoet-core'
+    testImplementation 'org.yaml:snakeyaml'
+
+    // 临时引入，待删除
+    implementation 'io.github.zeatul:hawk-dao-base'
+    implementation 'io.github.zeatul:hawk-validator'
 }

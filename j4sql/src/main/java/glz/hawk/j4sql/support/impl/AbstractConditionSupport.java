@@ -16,17 +16,18 @@
 
 package glz.hawk.j4sql.support.impl;
 
-import glz.hawk.j4sql.support.ConditionSupport;
-import glz.hawk.j4sql.support.JoinType;
-import glz.hawk.j4sql.support.SqlTable;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.condition.ConnectCondition;
 import glz.hawk.j4sql.condition.Connector;
 import glz.hawk.j4sql.condition.impl.CombinedCondition;
 import glz.hawk.j4sql.condition.impl.DefaultConnectCondition;
 import glz.hawk.j4sql.condition.impl.NotCondition;
+import glz.hawk.j4sql.support.ConditionSupport;
+import glz.hawk.j4sql.support.JoinType;
+import glz.hawk.j4sql.support.SqlTable;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -70,25 +71,26 @@ public abstract class AbstractConditionSupport implements ConditionSupport {
                 if (joinInfo.getCondition() == null) {
                     throw new IllegalStateException("The on condition wasn't set before"); //TODO:输出sqlTable名
                 }
-                joinInfo.setCondition(CombinedCondition.of(joinInfo.getCondition(), DefaultConnectCondition.of(connector,CombinedCondition.of(condition, connectConditions))));
+                joinInfo.setCondition(CombinedCondition.of(joinInfo.getCondition(), DefaultConnectCondition.of(connector, CombinedCondition.of(condition, connectConditions))));
                 break;
             case WHERE:
                 if (this.whereCondition == null) {
                     throw new IllegalStateException("The whereCondition wasn't set before"); //TODO:输出sqlTable名
                 }
-                this.whereCondition = CombinedCondition.of(this.whereCondition, DefaultConnectCondition.of(connector,CombinedCondition.of(condition, connectConditions)));
+                this.whereCondition = CombinedCondition.of(this.whereCondition, DefaultConnectCondition.of(connector, CombinedCondition.of(condition, connectConditions)));
                 break;
             case HAVING:
-                addHavingCondition(connector,condition,connectConditions);
+                addHavingCondition(connector, condition, connectConditions);
                 break;
             default:
                 throw new IllegalStateException(String.format("Unsupported conditionStep:%s", conditionStep));
         }
     }
 
-    protected void addHavingCondition(Connector connector, Condition condition, ConnectCondition... connectConditions){
+    protected void addHavingCondition(Connector connector, Condition condition, ConnectCondition... connectConditions) {
         throw new UnsupportedOperationException();
     }
+
     public void addNotCondition(Connector connector, Condition condition, ConnectCondition... connectConditions) {
         if (conditionStep == null) {
             throw new IllegalStateException("The conditionStep is null.");
@@ -109,22 +111,24 @@ public abstract class AbstractConditionSupport implements ConditionSupport {
                 this.whereCondition = CombinedCondition.of(this.whereCondition, DefaultConnectCondition.and(NotCondition.of(CombinedCondition.of(condition, connectConditions))));
                 break;
             case HAVING:
-                addHavingNotCondition(connector,condition,connectConditions);
+                addHavingNotCondition(connector, condition, connectConditions);
                 break;
             default:
                 throw new IllegalStateException(String.format("Unsupported conditionStep:%s", conditionStep));
         }
     }
 
-    protected void addHavingNotCondition(Connector connector, Condition condition, ConnectCondition... connectConditions){
+    protected void addHavingNotCondition(Connector connector, Condition condition, ConnectCondition... connectConditions) {
         throw new UnsupportedOperationException();
     }
 
-    public void addWhere(Condition condition, ConnectCondition... connectConditions) {
+    public void addWhere(@Nullable Condition condition, ConnectCondition... connectConditions) {
         if (this.whereCondition != null) {
             throw new IllegalStateException("The whereCondition must be null!");
         }
-        this.whereCondition = CombinedCondition.of(condition, connectConditions);
+        if (condition != null) {
+            this.whereCondition = CombinedCondition.of(condition, connectConditions);
+        }
         this.conditionStep = ConditionStep.WHERE;
     }
 

@@ -16,41 +16,27 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
+import com.google.common.base.CaseFormat;
 import glz.hawk.codepoet.java.*;
-import glz.hawk.jdesigner.spec.database.Column;
-import glz.hawk.jdesigner.spec.database.IndexColumn;
-import glz.hawk.jdesigner.spec.database.PrimaryKey;
-import glz.hawk.jdesigner.spec.database.Table;
-import glz.hawk.jdesigner.translator.Translator;
-import glz.hawk.jdesigner.translator.database.TableHelper;
-import glz.hawkframework.dao.context.DefaultRepositoryContext;
-import glz.hawkframework.dao.context.ExceptionConverter;
-import glz.hawkframework.dao.context.SqlMethod;
-import glz.hawkframework.dao.process.InsertProcessor;
-import glz.hawkframework.dao.process.UpdateProcessor;
-import glz.hawkframework.core.helper.MapHelper;
-import glz.hawkframework.core.helper.StringHelper;
-import glz.hawk.j4sql.util.QueryWrapper;
-import glz.hawkframework.core.support.ArgumentSupport;
 import glz.hawk.codepoet.java.type.ClassName;
-import glz.hawk.codepoet.java.type.ParameterizedTypeName;
 import glz.hawk.codepoet.java.type.TypeName;
-import org.apache.ibatis.cursor.Cursor;
-import org.springframework.beans.factory.annotation.Autowired;
+import glz.hawk.jdesigner.spec.database.*;
+import glz.hawk.jdesigner.translator.Translator;
+import glz.hawkframework.core.helper.MapHelper;
+import glz.hawkframework.core.support.ArgumentSupport;
+import glz.hawkframework.dao.context.DefaultRepositoryContext;
+import glz.hawkframework.dao.context.SqlMethod;
+import glz.hawkframework.dao.process.InsertParameter;
+import glz.hawkframework.dao.process.UpdateParameter;
+import glz.hawkframework.dao.process.UpdateProcessor;
 import org.springframework.stereotype.Repository;
 
 import javax.annotation.Nonnull;
-import javax.lang.model.element.Modifier;
-import java.io.IOException;
-import java.io.UncheckedIOException;
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
-import static glz.hawk.codepoet.java.type.VoidTypeName.VOID;
 import static javax.lang.model.element.Modifier.PUBLIC;
 
 /**
@@ -58,30 +44,38 @@ import static javax.lang.model.element.Modifier.PUBLIC;
  *
  * @author Hawk
  */
-public class TableToRepositoryImpl extends AbstractTableToRepository implements Translator<Table, JavaFile> {
+public class TableToRepositoryImpl extends TableToAbstractRepository implements Translator<Table, JavaFile> {
 
     protected final Translator<Table, String> repositoryImplClassPackageTranslator;
-    protected final Translator<Table, String> repositoryImplClassNameTranslator;
-    protected final Translator<Table, String> mapperClassPackageTranslator;
-    protected final Translator<Table, String> mapperClassNameTranslator;
-    protected final Translator<Table, String> sqlProviderClassPackageTranslator;
-    protected final Translator<Table, String> sqlProviderClassNameTranslator;
 
-    public TableToRepositoryImpl(Translator<Table, String> repositoryClassPackageTranslator, Translator<Table, String> repositoryClassNameTranslator,
-                                 Translator<Table, String> poClassPackageTranslator, Translator<Table, String> poClassNameTranslator,
-                                 Translator<Column, String> columnToParamNameTranslator, Translator<Column, TypeName> dataTypeToTypeNameTranslator,
-                                 Translator<Table, String> updateClassPackageTranslator, Translator<Table, String> updateClassNameTranslator, Translator<Table, String> columnUpdateClassNameTranslator,
-                                 Translator<Table, String> repositoryImplClassPackageTranslator, Translator<Table, String> repositoryImplClassNameTranslator,
-                                 Translator<Table, String> mapperClassPackageTranslator, Translator<Table, String> mapperClassNameTranslator,
-                                 Translator<Table, String> sqlProviderClassPackageTranslator, Translator<Table, String> sqlProviderClassNameTranslator
+    protected final Translator<Table, String> repositoryImplClassNameTranslator;
+
+    public TableToRepositoryImpl(Translator<Table, String> repositoryClassPackageTranslator,
+                                 Translator<Table, String> repositoryClassNameTranslator,
+                                 Translator<Table, String> abstractRepositoryPackageTranslator,
+                                 Translator<Table, String> abstractRepositoryClassNameTranslator,
+                                 Translator<Table, String> mapperClassPackageTranslator,
+                                 Translator<Table, String> mapperClassNameTranslator,
+                                 Translator<Table, String> sqlProviderClassPackageTranslator,
+                                 Translator<Table, String> sqlProviderClassNameTranslator,
+                                 Translator<Table, String> poClassPackageTranslator,
+                                 Translator<Table, String> poClassNameTranslator,
+                                 Translator<Column, String> columnToParamNameTranslator,
+                                 Translator<Column, TypeName> dataTypeToTypeNameTranslator,
+                                 Translator<Table, String> updateClassPackageTranslator,
+                                 Translator<Table, String> updateClassNameTranslator,
+                                 Translator<Table, String> columnUpdateClassNameTranslator,
+                                 Translator<Table, String> repositoryImplClassPackageTranslator,
+                                 Translator<Table, String> repositoryImplClassNameTranslator,
+                                 ColumnFinder recordVersionColumnFinder,
+                                 boolean supportColumnInsertOrUpdate
     ) {
-        super(repositoryClassPackageTranslator, repositoryClassNameTranslator, poClassPackageTranslator, poClassNameTranslator, columnToParamNameTranslator, dataTypeToTypeNameTranslator, updateClassPackageTranslator, updateClassNameTranslator, columnUpdateClassNameTranslator);
+        super(repositoryClassPackageTranslator, repositoryClassNameTranslator, abstractRepositoryPackageTranslator, abstractRepositoryClassNameTranslator,
+            mapperClassPackageTranslator, mapperClassNameTranslator, sqlProviderClassPackageTranslator, sqlProviderClassNameTranslator,
+            poClassPackageTranslator, poClassNameTranslator, columnToParamNameTranslator, dataTypeToTypeNameTranslator, updateClassPackageTranslator, updateClassNameTranslator, columnUpdateClassNameTranslator, recordVersionColumnFinder, supportColumnInsertOrUpdate);
         this.repositoryImplClassPackageTranslator = argNotNull(repositoryImplClassPackageTranslator, "repositoryImplClassPackageTranslator");
         this.repositoryImplClassNameTranslator = argNotNull(repositoryImplClassNameTranslator, "repositoryImplClassNameTranslator");
-        this.mapperClassPackageTranslator = argNotNull(mapperClassPackageTranslator, "mapperClassPackageTranslator");
-        this.mapperClassNameTranslator = argNotNull(mapperClassNameTranslator, "mapperClassNameTranslator");
-        this.sqlProviderClassPackageTranslator = argNotNull(sqlProviderClassPackageTranslator, "sqlProviderClassPackageTranslator");
-        this.sqlProviderClassNameTranslator = argNotNull(sqlProviderClassNameTranslator, "sqlProviderClassNameTranslator");
+
     }
 
     @Nonnull
@@ -91,23 +85,8 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
         String className = repositoryImplClassNameTranslator.translate(table);
         ClassSpec.Builder builder = ClassSpec.builder(className).addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Repository.class).build())
+            .setSuperClass(ClassName.of(abstractRepositoryPackageTranslator.translate(table), abstractRepositoryClassNameTranslator.translate(table)))
             .addSuperInterface(ClassName.of(repositoryClassPackageTranslator.translate(table), repositoryClassNameTranslator.translate(table)));
-
-        // fields
-        // mapper
-        builder.addField(mapper(table));
-
-        // sqlProvider
-        builder.addField(sqlProvider(table));
-
-        // insertProcessor
-        builder.addField(insertProcessor());
-
-        // updateProcessor
-        builder.addField(updateProcessor());
-
-        // exceptionConverter
-        builder.addField(exceptionConverter());
 
         // constructors
         builder.addConstructor(constructor(table));
@@ -124,50 +103,46 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
         builder.addMethod(insertMultipleWithChunk(table));
 
         // deleteByPrimaryKey
-        table.getPrimaryKey().map(this::deleteByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::deleteByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // updateByPrimaryKey
-        table.getPrimaryKey().map(this::updateByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::updateByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // getByPrimaryKey
-        table.getPrimaryKey().map(this::getByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::getByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // loadByPrimaryKey
-        table.getPrimaryKey().map(this::loadByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::loadByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // loadByPrimaryKeyWithThrow
-        table.getPrimaryKey().map(this::loadWithThrowByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::loadWithThrowByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // existByPrimaryKey
-        table.getPrimaryKey().map(this::existByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::existByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // assertExistByPrimaryKey
-        table.getPrimaryKey().map(this::assertExistByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::assertExistByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
         // assertExistWithThrowByPrimaryKey
-        table.getPrimaryKey().map(this::assertExistWithThrowByPrimaryKey).ifPresent(builder::addMethod);
+        table.getPrimaryKey().map(this::assertExistWithThrowByPrimaryKeyOrUniqueIndex).ifPresent(builder::addMethod);
 
-        // common
-        builder.addMethod(queryOne(table));
-        builder.addMethod(queryMany(table));
-        builder.addMethod(cursor(table));
-        builder.addMethod(loadOne(table));
-        builder.addMethod(loadOneWithThrow(table));
-        builder.addMethod(count(table));
-        builder.addMethod(exist(table));
-        builder.addMethod(assertExist(table));
-        builder.addMethod(assertExistWithThrow(table));
-        builder.addMethod(existOne(table));
-        builder.addMethod(assertExistOne(table));
-        builder.addMethod(assertExistOneWithThrow(table));
-        builder.addMethod(delete(table));
-        builder.addMethod(update(table));
-
-        // before/after insert/update
-        builder.addMethod(beforeInsert());
-        builder.addMethod(afterInsert());
-        builder.addMethod(beforeUpdate());
-        builder.addMethod(afterUpdate());
+        // unique index
+        // delete
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::deleteByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // update
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::updateByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // get
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::getByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // load
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::loadByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // load with throw
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::loadWithThrowByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // exist
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::existByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // assert exist
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::assertExistByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
+        // assert exist with throw
+        Arrays.stream(table.getIndexes()).filter(Index::isUnique).map(this::assertExistWithThrowByPrimaryKeyOrUniqueIndex).forEach(builder::addMethod);
 
         // static import
         builder.addStaticImport(ArgumentSupport.class, "*")
@@ -179,141 +154,6 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
         return JavaFile.builder(repositoryImplClassPackageTranslator.translate(table), builder.build()).build();
     }
 
-    protected String beforeInsertMethodName() {
-        return "beforeInsert";
-    }
-
-    protected MethodSpec beforeInsert() {
-        final String paramName = "obj";
-        return MethodSpec.builder(VOID, beforeInsertMethodName(), Modifier.PROTECTED)
-            .addParameter(Object.class, paramName)
-            .beginMethodBody()
-            .beginIf("$L != null", insertProcessorFieldName())
-            .beginIf("$L instanceof $T", paramName, List.class)
-            .addStatement("$L.beforeInsert(($T<?>) $L)", insertProcessorFieldName(), List.class, paramName)
-            .beginElse()
-            .addStatement("$L.beforeInsert($L)", insertProcessorFieldName(), paramName)
-            .endIf()
-            .endIf()
-            .end()
-            .build();
-    }
-
-    protected String afterInsertMethodName() {
-        return "afterInsert";
-    }
-
-    protected MethodSpec afterInsert() {
-        final String paramName = "obj";
-        return MethodSpec.builder(VOID, afterInsertMethodName(), Modifier.PROTECTED)
-            .addParameter(Object.class, paramName)
-            .beginMethodBody()
-            .beginIf("$L != null", insertProcessorFieldName())
-            .beginIf("$L instanceof $T", paramName, List.class)
-            .addStatement("$L.afterInsert(($T<?>) $L)", insertProcessorFieldName(), List.class, paramName)
-            .beginElse()
-            .addStatement("$L.afterInsert($L)", insertProcessorFieldName(), paramName)
-            .endIf()
-            .endIf()
-            .end()
-            .build();
-    }
-
-    protected String beforeUpdateMethodName() {
-        return "beforeUpdate";
-    }
-
-    protected MethodSpec beforeUpdate() {
-        final String paramName = "params";
-        return MethodSpec.builder(VOID, beforeUpdateMethodName(), Modifier.PROTECTED)
-            .addParameter(ParameterizedTypeName.of(Map.class, String.class, Object.class), paramName)
-            .beginMethodBody()
-            .beginIf("$L != null", updateProcessorFieldName())
-            .addStatement("$L.beforeUpdate($L)", updateProcessorFieldName(), paramName)
-            .endIf()
-            .end()
-            .build();
-    }
-
-    protected String afterUpdateMethodName() {
-        return "afterUpdate";
-    }
-
-    protected MethodSpec afterUpdate() {
-        final String paramName = "params";
-        return MethodSpec.builder(VOID, afterUpdateMethodName(), Modifier.PROTECTED)
-            .addParameter(ParameterizedTypeName.of(Map.class, String.class, Object.class), paramName)
-            .beginMethodBody()
-            .beginIf("$L != null", updateProcessorFieldName())
-            .addStatement("$L.afterUpdate($L)", updateProcessorFieldName(), paramName)
-            .endIf()
-            .end()
-            .build();
-    }
-
-
-    protected ClassName insertProcessorClassName() {
-        return ClassName.ofClass(InsertProcessor.class);
-    }
-
-    protected String insertProcessorFieldName() {
-        return "insertProcessor";
-    }
-
-    protected FieldSpec insertProcessor() {
-        return FieldSpec.builder(insertProcessorClassName(), insertProcessorFieldName(), Modifier.PRIVATE)
-            .addAnnotation(AnnotationInstanceSpec.builder(Autowired.class).addMember("required", false).build())
-            .build();
-    }
-
-    protected ClassName updateProcessorClassName() {
-        return ClassName.ofClass(UpdateProcessor.class);
-    }
-
-    protected String updateProcessorFieldName() {
-        return "updateProcessor";
-    }
-
-    protected FieldSpec updateProcessor() {
-        return FieldSpec.builder(updateProcessorClassName(), updateProcessorFieldName(), Modifier.PRIVATE)
-            .addAnnotation(AnnotationInstanceSpec.builder(Autowired.class).addMember("required", false).build())
-            .build();
-    }
-
-    protected String exceptionConverterFieldName() {
-        return "exceptionConverter";
-    }
-
-    protected FieldSpec exceptionConverter() {
-        return FieldSpec.builder(ExceptionConverter.class, exceptionConverterFieldName())
-            .addAnnotation(Autowired.class)
-            .build();
-    }
-
-    protected ClassName mapperClassName(Table table) {
-        return ClassName.of(mapperClassPackageTranslator.translate(table), mapperClassNameTranslator.translate(table));
-    }
-
-    protected String mapperFieldName(Table table) {
-        return StringHelper.unCapitalize(mapperClassNameTranslator.translate(table));
-    }
-
-    protected FieldSpec mapper(Table table) {
-        return FieldSpec.builder(mapperClassName(table), mapperFieldName(table), Modifier.PRIVATE, Modifier.FINAL).build();
-    }
-
-    protected ClassName sqlProviderClassName(Table table) {
-        return ClassName.of(sqlProviderClassPackageTranslator.translate(table), sqlProviderClassNameTranslator.translate(table));
-    }
-
-    protected String sqlProviderFieldName(Table table) {
-        return StringHelper.unCapitalize(sqlProviderClassNameTranslator.translate(table));
-    }
-
-    protected FieldSpec sqlProvider(Table table) {
-        return FieldSpec.builder(sqlProviderClassName(table), sqlProviderFieldName(table), Modifier.PRIVATE, Modifier.FINAL).build();
-    }
-
     protected ConstructorSpec constructor(Table table) {
         String mapperParamName = mapperFieldName(table);
         String sqlProviderParamName = sqlProviderFieldName(table);
@@ -321,8 +161,7 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
             .addParameter(ParameterSpec.builder(mapperClassName(table), mapperParamName).build())
             .addParameter(ParameterSpec.builder(sqlProviderClassName(table), sqlProviderParamName).build())
             .beginConstructorBody()
-            .addStatement("this.$L = argNotNull($L, $S)", mapperFieldName(table), mapperParamName, mapperParamName)
-            .addStatement("this.$L = argNotNull($L, $S)", sqlProviderFieldName(table), sqlProviderParamName, sqlProviderParamName)
+            .addStatement("super($L, $L)", mapperFieldName(table), sqlProviderFieldName(table))
             .end()
             .build();
     }
@@ -330,11 +169,13 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
     protected MethodSpec insert(Table table) {
         String mapperFieldName = mapperFieldName(table);
         String poParamName = poParamName(table);
+        String insertParameterParamName = "insertParameter";
         return insertBuilder(table)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
-            .addStatement("$L(argNotNull($L, $S))", beforeInsertMethodName(), poParamName, poParamName)
+            .addStatement("$T $L = $T.builder().setInsertObject(argNotNull($L, $S)).build()", InsertParameter.class, insertParameterParamName, InsertParameter.class, poParamName, poParamName)
+            .addStatement("$L($L)", beforeInsertMethodName(), insertParameterParamName)
             .beginTry()
             .addStatement("$L.insert($L.insert($L))", mapperFieldName, sqlProviderFieldName(table), poParamName)
             .beginCatch("$T ex", Exception.class)
@@ -350,7 +191,7 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 b.removeIndent(4);
             })
             .endTry()
-            .addStatement("$L($L)", afterInsertMethodName(), poParamName)
+            .addStatement("$L($L)", afterInsertMethodName(), insertParameterParamName)
             .end()
             .build();
     }
@@ -358,11 +199,13 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
     protected MethodSpec insertSelective(Table table) {
         String mapperFieldName = mapperFieldName(table);
         String poParamName = poParamName(table);
+        String insertParameterParamName = "insertParameter";
         return insertSelectiveBuilder(table)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
-            .addStatement("$L(argNotNull($L, $S))", beforeInsertMethodName(), poParamName, poParamName)
+            .addStatement("$T $L = $T.builder().setInsertObject(argNotNull($L, $S)).build()", InsertParameter.class, insertParameterParamName, InsertParameter.class, poParamName, poParamName)
+            .addStatement("$L($L)", beforeInsertMethodName(), insertParameterParamName)
             .beginTry()
             .addStatement("$L.insertSelective($L.insertSelective($L))", mapperFieldName, sqlProviderFieldName(table), poParamName)
             .beginCatch("$T ex", Exception.class)
@@ -378,7 +221,7 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 b.removeIndent(4);
             })
             .endTry()
-            .addStatement("$L($L)", afterInsertMethodName(), poParamName)
+            .addStatement("$L($L)", afterInsertMethodName(), insertParameterParamName)
             .end()
             .build();
     }
@@ -397,7 +240,7 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
             .addStatement("argument($L, c -> c > 0, c -> \"The parameter['$L'] must be greater than 0.\")", chunkSizeParamName, chunkSizeParamName)
             .beginFor("int i = 0; i < $L.size(); i += $L", posParamName, chunkSizeParamName)
             .addStatement("$T<$T> $L = $L.subList(i, Math.min(i + $L, $L.size()))", List.class, poClassName(table), chunkLocalParamName, posParamName, chunkSizeParamName, posParamName)
-            .addStatement("$L($L)", beforeInsertMethodName(), chunkLocalParamName)
+            .addStatement("$L.stream().map(po->$T.builder().setInsertObject(po).build()).forEach(this::$L)", chunkLocalParamName, InsertParameter.class, beforeInsertMethodName())
             .beginTry()
             .addStatement("$L.insertMultiple($L.insertMultiple($L))", mapperFieldName, sqlProviderFieldName, chunkLocalParamName)
             .beginCatch("$T ex", Exception.class)
@@ -414,7 +257,7 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 b.removeIndent(4);
             })
             .endTry()
-            .addStatement("$L($L)", afterInsertMethodName(), chunkLocalParamName)
+            .addStatement("$L.stream().map(po->$T.builder().setInsertObject(po).build()).forEach(this::$L)", chunkLocalParamName, InsertParameter.class, afterInsertMethodName())
             .endFor()
             .end()
             .build();
@@ -433,12 +276,14 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
             .build();
     }
 
-    protected MethodSpec deleteByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
-        TableHelper.findRecordVersionColumn(primaryKey.getOwner()).ifPresent(columnList::add);
+    protected MethodSpec deleteByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "deleteByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "DELETE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+        recordVersionColumnFinder.find(table).ifPresent(columnList::add);
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
-        return deleteByPrimaryKeyBuilder(primaryKey)
+        return deleteByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -446,9 +291,9 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 String columnParamName = columnToParamNameTranslator.translate(c);
                 b.addStatement("argNotNull($L, $S)", columnParamName, columnParamName);
             }))
-            .beginIf("$L.deleteGeneral($L.deleteByPrimaryKey($L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), parameters)
+            .beginIf("$L.deleteGeneral($L.$L($L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, parameters)
             .addCode(b -> {
-                b.addStatement("$T builder = builder(getClass(), $S, DELETE)", DefaultRepositoryContext.Builder.class, deleteByPrimaryKeyMethodName());
+                b.addStatement("$T builder = builder(getClass(), $S, DELETE)", DefaultRepositoryContext.Builder.class, deleteByPrimaryKeyOrUniqueIndexMethodName(indexSupport));
                 b.addStatement("builder.setPoClass($T.class)", poClassName(table));
                 b.addStatement("builder.setDiscriminator(AFFECTED_ROWS_COUNT_IS_UNEXPECTED)");
                 columnList.forEach(c -> {
@@ -462,14 +307,16 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
             .build();
     }
 
-    protected MethodSpec updateByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
-        TableHelper.findRecordVersionColumn(primaryKey.getOwner()).ifPresent(columnList::add);
+    protected MethodSpec updateByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "updateByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "UPDATE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+        recordVersionColumnFinder.find(indexSupport.getOwner()).ifPresent(columnList::add);
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
         String updateParamName = updateParamName(table);
-        String paramsLocalParamName = "params";
-        return updateByPrimaryKeyBuilder(primaryKey)
+        String paramsLocalParamName = "updateParameter";
+        return updateByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -481,23 +328,18 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 });
             })
             .addCode(b -> {
-                b.addCode("$T<String, Object> $L = ofHashMap(entry(UPDATE_BY_FIELD_OBJECT, $L)", HashMap.class, paramsLocalParamName, updateParamName);
-                if (primaryKey.getIndexColumns().length == 1) {
-                    Column column = primaryKey.getIndexColumns()[0].getColumn();
-                    b.addCode(", entry(RECORD_ID, $L)", columnToParamNameTranslator.translate(column));
-                } else {
-                    Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(column -> b.addCode(", entry($L, $L)", columnToParamNameTranslator.translate(column), columnToParamNameTranslator.translate(column)));
-                }
-                TableHelper.findRecordVersionColumn(primaryKey.getOwner()).ifPresent(column -> b.addCode(", entry(RECORD_VERSION, $L)", columnToParamNameTranslator.translate(column)));
-                b.addCode(");").addNewLine();
+                b.addCode("$T $L = $T.builder().setFieldUpdateObject($L)", UpdateParameter.class, paramsLocalParamName, UpdateParameter.class, updateParamName);
+                recordVersionColumnFinder.find(indexSupport.getOwner()).ifPresent(column -> b.addCode(".setRecordVersion($L)", columnToParamNameTranslator.translate(column)));
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addCode(".addParam($S, $L)", columnToParamNameTranslator.translate(c), columnToParamNameTranslator.translate(c)));
+                b.addCode(".build();").addNewLine();
             })
             .addStatement("$L($L)", beforeUpdateMethodName(), paramsLocalParamName)
-            .beginIf("$L.update($L.updateByPrimaryKey($L, $L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), updateParamName((table)), parameters)
+            .beginIf("$L.update($L.$L($L, $L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, updateParamName((table)), parameters)
             .addCode(b -> {
-                b.addStatement("Builder builder = builder(getClass(), $S, $T.UPDATE)", updateByPrimaryKeyMethodName(), SqlMethod.class);
+                b.addStatement("Builder builder = builder(getClass(), $S, $T.UPDATE)", updateByPrimaryKeyOrUniqueIndexMethodName(indexSupport), SqlMethod.class);
                 b.addStatement("builder.setPoClass($T.class)", poClassName(table));
                 b.addStatement("builder.setDiscriminator(AFFECTED_ROWS_COUNT_IS_UNEXPECTED)");
-                b.addStatement("builder.addParam($L)", paramsLocalParamName);
+                b.addStatement("builder.addParam($S,$L)", paramsLocalParamName, paramsLocalParamName);
                 b.addStatement("throw $L.convertTo(builder.build())", exceptionConverterFieldName());
             })
             .endIf()
@@ -506,11 +348,12 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
             .build();
     }
 
-    protected MethodSpec getByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+    protected MethodSpec getByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
-        return getByPrimaryKeyBuilder(primaryKey)
+        final String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "selectByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "SELECT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+        return getByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -518,16 +361,19 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 String columnParamName = columnToParamNameTranslator.translate(c);
                 b.addStatement("argNotNull($L, $S)", columnParamName, columnParamName);
             }))
-            .addStatement("return $L.selectOne($L.selectByPrimaryKey($L))", mapperFieldName(table), sqlProviderFieldName(table), parameters)
+            .addStatement("return $L.selectOne($L.$L($L))", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, parameters)
             .end()
             .build();
     }
 
-    protected MethodSpec loadByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+
+    protected MethodSpec loadByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
-        return loadByPrimaryKeyBuilder(primaryKey)
+        final String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "selectByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "SELECT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
+        return loadByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -536,16 +382,16 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 b.addStatement("argNotNull($L, $S)", columnParamName, columnParamName);
             }))
             .addCode(b -> {
-                b.addCode("return $L.selectOne($L.selectByPrimaryKey($L))", mapperFieldName(table), sqlProviderFieldName(table), parameters).addNewLine();
+                b.addCode("return $L.selectOne($L.$L($L))", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, parameters).addNewLine();
                 b.addIndent(2);
                 b.addCode(".orElseThrow(() -> $L.convertTo(", exceptionConverterFieldName()).addNewLine();
                 b.addIndent(2);
-                b.addCode("builder(getClass(), $S, SELECT)", loadByPrimaryKeyMethodName()).addNewLine();
+                b.addCode("builder(getClass(), $S, SELECT)", loadByPrimaryKeyOrUniqueIndexMethodName(indexSupport)).addNewLine();
                 b.addIndent(2);
                 b.addCode(".setPoClass($T.class)", poClassName(table)).addNewLine();
                 b.addCode(".setDiscriminator(FOUND_NONE)").addNewLine();
                 columnList.forEach(c -> {
-                    String columnParamName = columnToParamNameTranslator.translate(columnList.get(0));
+                    String columnParamName = columnToParamNameTranslator.translate(c);
                     b.addCode(".addParam($S, $L)", columnParamName, columnParamName).addNewLine();
                 });
                 b.addCode(".build()));").addNewLine();
@@ -555,11 +401,13 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
             .build();
     }
 
-    protected MethodSpec loadWithThrowByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+    protected MethodSpec loadWithThrowByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        final String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "selectByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "SELECT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
-        return loadWithThrowByPrimaryKeyBuilder(primaryKey)
+        return loadWithThrowByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -570,16 +418,17 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 });
                 b.addStatement("argNotNull($L, $S)", exceptionSupplierParamName(), exceptionSupplierParamName());
             })
-            .addStatement("return $L.selectOne($L.selectByPrimaryKey($L)).orElseThrow($L)", mapperFieldName(table), sqlProviderFieldName(table), parameters, exceptionSupplierParamName())
+            .addStatement("return $L.selectOne($L.$L($L)).orElseThrow($L)", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, parameters, exceptionSupplierParamName())
             .end()
             .build();
     }
 
-    protected MethodSpec existByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+    protected MethodSpec existByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        final String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "countByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "COUNT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
-        return existByPrimaryKeyBuilder(primaryKey)
+        return existByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -587,16 +436,17 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 String columnParamName = columnToParamNameTranslator.translate(c);
                 b.addStatement("argNotNull($L, $S)", columnParamName, columnParamName);
             }))
-            .addStatement("return $L.count($L.countByPrimaryKey($L)) == 1", mapperFieldName(table), sqlProviderFieldName(table), parameters)
+            .addStatement("return $L.count($L.$L($L)) == 1", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, parameters)
             .end()
             .build();
     }
 
-    protected MethodSpec assertExistByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+    protected MethodSpec assertExistByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        final String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "countByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "COUNT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
-        return assertExistByPrimaryKeyBuilder(primaryKey)
+        return assertExistByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -604,9 +454,9 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 String columnParamName = columnToParamNameTranslator.translate(c);
                 b.addStatement("argNotNull($L, $S)", columnParamName, columnParamName);
             }))
-            .beginIf("$L.count($L.countByPrimaryKey($L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), parameters)
+            .beginIf("$L.count($L.$L($L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, parameters)
             .addCode(b -> {
-                b.addStatement("Builder builder = builder(getClass(), $S, SELECT)", assertExistByPrimaryKeyMethodName());
+                b.addStatement("Builder builder = builder(getClass(), $S, SELECT)", assertExistByPrimaryKeyOrUniqueIndexMethodName(indexSupport));
                 b.addStatement("builder.setPoClass($T.class)", poClassName(table));
                 b.addStatement("builder.setDiscriminator(FOUND_NONE)");
                 columnList.forEach(c -> {
@@ -620,11 +470,12 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
             .build();
     }
 
-    protected MethodSpec assertExistWithThrowByPrimaryKey(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        List<Column> columnList = Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
+    protected MethodSpec assertExistWithThrowByPrimaryKeyOrUniqueIndex(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        final String sqlProviderMethodName = indexSupport instanceof PrimaryKey ? "countByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "COUNT_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+        List<Column> columnList = Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).collect(Collectors.toList());
         String parameters = columnList.stream().map(columnToParamNameTranslator::translate).collect(Collectors.joining(", "));
-        return assertExistWithThrowByPrimaryKeyBuilder(primaryKey)
+        return assertExistWithThrowByPrimaryKeyOrUniqueIndexBuilder(indexSupport)
             .addModifier(PUBLIC)
             .addAnnotation(AnnotationInstanceSpec.builder(Override.class).build())
             .beginMethodBody()
@@ -635,255 +486,12 @@ public class TableToRepositoryImpl extends AbstractTableToRepository implements 
                 });
                 b.addStatement("argNotNull($L, $S)", exceptionSupplierParamName(), exceptionSupplierParamName());
             })
-            .beginIf("$L.count($L.countByPrimaryKey($L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), parameters)
+            .beginIf("$L.count($L.$L($L)) != 1", mapperFieldName(table), sqlProviderFieldName(table), sqlProviderMethodName, parameters)
             .addStatement("throw $L.get()", exceptionSupplierParamName())
             .endIf()
             .end()
             .build();
     }
 
-    protected MethodSpec queryOne(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return queryOneBuild(table)
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), q -> !q.isCount(), q -> \"The count field in the $L should be set to false.\")", queryWrapperParamName, queryWrapperParamName, queryWrapperParamName)
-            .addStatement("return $L.selectOne($L.selectOrCountDynamic($L))", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .end()
-            .build();
-    }
-
-    protected MethodSpec queryMany(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return queryManyBuild(table)
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), q -> !q.isCount(), q -> \"The count field in the $L should be set to false.\")", queryWrapperParamName, queryWrapperParamName, queryWrapperParamName)
-            .addStatement("return $L.selectMany($L.selectOrCountDynamic($L))", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .end()
-            .build();
-    }
-
-    protected MethodSpec cursor(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        String consumerParamName = consumerParamName();
-        String cursorLocalParamName = "cursor";
-        return cursorBuild(table)
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argNotNull($L, $S)", consumerParamName, consumerParamName)
-            .addStatement("argument(argNotNull($L, $S), q -> !q.isCount(), q -> \"The count field in the $L should be set to false.\")", queryWrapperParamName, queryWrapperParamName, queryWrapperParamName)
-            .beginTry("$T<$T> $L = $L.cursor($L.selectOrCountDynamic($L))",
-                Cursor.class, poClassName(table), cursorLocalParamName, mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .addStatement("$L.forEach($L)", cursorLocalParamName, consumerParamName)
-            .beginCatch("$T e", IOException.class)
-            .addStatement("throw new $T(e)", UncheckedIOException.class)
-            .endTry()
-            .end()
-            .build();
-    }
-
-    protected MethodSpec loadOne(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return loadOneBuild(table)
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), q -> !q.isCount(), q -> \"The count field in the $L should be set to false.\")", queryWrapperParamName, queryWrapperParamName, queryWrapperParamName)
-            .addCode(b -> {
-                b.addCode("return $L.selectOne($L.selectOrCountDynamic($L))", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName).addNewLine();
-                b.addIndent(2);
-                b.addCode(".orElseThrow(() -> $L.convertTo(", exceptionConverterFieldName()).addNewLine();
-                b.addIndent(2);
-                b.addCode("builder(getClass(), $S, SELECT)", loadOneMethodName()).addNewLine();
-                b.addIndent(2);
-                b.addCode(".setPoClass($T.class)", poClassName(table)).addNewLine();
-                b.addCode(".setDiscriminator(FOUND_NONE)").addNewLine();
-                b.addCode(".addParam($S, $L)", queryWrapperParamName, queryWrapperParamName).addNewLine();
-                b.addCode(".build()));").addNewLine();
-                b.removeIndent(6);
-            })
-            .end()
-            .build();
-    }
-
-    protected MethodSpec loadOneWithThrow(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return loadOneWithThrowBuild(table)
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), q -> !q.isCount(), q -> \"The count field in the $L should be set to false.\")", queryWrapperParamName, queryWrapperParamName, queryWrapperParamName)
-            .addStatement("argNotNull($L, $S)", exceptionSupplierParamName(), exceptionSupplierParamName())
-            .addStatement("return $L.selectOne($L.selectOrCountDynamic($L)).orElseThrow($L)", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName, exceptionSupplierParamName())
-            .end()
-            .build();
-    }
-
-    protected MethodSpec count(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return countBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), $T::isCount, q -> \"The count field in the $L should be set to true.\")", queryWrapperParamName, queryWrapperParamName, QueryWrapper.class, queryWrapperParamName)
-            .addStatement("return $L.count($L.selectOrCountDynamic($L))", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .end()
-            .build();
-    }
-
-    protected MethodSpec exist(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return existBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), $T::isCount, q -> \"The count field in the $L should be set to true.\")", queryWrapperParamName, queryWrapperParamName, QueryWrapper.class, queryWrapperParamName)
-            .addStatement("return $L.count($L.selectOrCountDynamic($L)) > 0", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .end()
-            .build();
-    }
-
-    protected MethodSpec assertExist(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return assertExistBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), $T::isCount, q -> \"The count field in the $L should be set to true.\")", queryWrapperParamName, queryWrapperParamName, QueryWrapper.class, queryWrapperParamName)
-            .beginIf("$L.count($L.selectOrCountDynamic($L)) <= 0", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .addCode(b -> {
-                b.addCode("throw $L.convertTo(", exceptionConverterFieldName()).addNewLine();
-                b.addIndent(2);
-                b.addCode("builder(getClass(), $S, SELECT)", assertExistMethodName()).addNewLine();
-                b.addIndent(2);
-                b.addCode(".setPoClass($T.class)", poClassName(table)).addNewLine();
-                b.addCode(".setDiscriminator(FOUND_NONE)").addNewLine();
-                b.addCode(".addParam($S, $L)", queryWrapperParamName, queryWrapperParamName).addNewLine();
-                b.addCode(".build());").addNewLine();
-                b.removeIndent(4);
-            })
-            .endIf()
-            .end()
-            .build();
-    }
-
-    protected MethodSpec assertExistWithThrow(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return assertExistWithThrowBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), $T::isCount, q -> \"The count field in the $L should be set to true.\")", queryWrapperParamName, queryWrapperParamName, QueryWrapper.class, queryWrapperParamName)
-            .addStatement("argNotNull($L, $S)", exceptionSupplierParamName(), exceptionSupplierParamName())
-            .beginIf("$L.count($L.selectOrCountDynamic($L)) <= 0", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .addStatement("throw $L.get()", exceptionSupplierParamName())
-            .endIf()
-            .end()
-            .build();
-    }
-
-    protected MethodSpec existOne(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return existOneBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), $T::isCount, q -> \"The count field in the $L should be set to true.\")", queryWrapperParamName, queryWrapperParamName, QueryWrapper.class, queryWrapperParamName)
-            .addStatement("return $L.count($L.selectOrCountDynamic($L)) == 1", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .end()
-            .build();
-    }
-
-    protected MethodSpec assertExistOne(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return assertExistOneBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), $T::isCount, q -> \"The count field in the $L should be set to true.\")", queryWrapperParamName, queryWrapperParamName, QueryWrapper.class, queryWrapperParamName)
-            .beginIf("$L.count($L.selectOrCountDynamic($L)) == 0", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .addCode(b -> {
-                b.addCode("throw $L.convertTo(", exceptionConverterFieldName()).addNewLine();
-                b.addIndent(2);
-                b.addCode("builder(getClass(), $S, SELECT)", assertExistMethodName()).addNewLine();
-                b.addIndent(2);
-                b.addCode(".setPoClass($T.class)", poClassName(table)).addNewLine();
-                b.addCode(".setDiscriminator(FOUND_NONE)").addNewLine();
-                b.addCode(".addParam($S, $L)", queryWrapperParamName, queryWrapperParamName).addNewLine();
-                b.addCode(".build());").addNewLine();
-                b.removeIndent(4);
-            })
-            .endIf()
-            .beginIf("$L.count($L.selectOrCountDynamic($L)) > 1", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .addCode(b -> {
-                b.addCode("throw $L.convertTo(", exceptionConverterFieldName()).addNewLine();
-                b.addIndent(2);
-                b.addCode("builder(getClass(), $S, SELECT)", assertExistMethodName()).addNewLine();
-                b.addIndent(2);
-                b.addCode(".setPoClass($T.class)", poClassName(table)).addNewLine();
-                b.addCode(".setDiscriminator(FOUND_MULTIPLE)").addNewLine();
-                b.addCode(".addParam($S, $L)", queryWrapperParamName, queryWrapperParamName).addNewLine();
-                b.addCode(".build());").addNewLine();
-                b.removeIndent(4);
-            })
-            .endIf()
-            .end()
-            .build();
-    }
-
-    protected MethodSpec assertExistOneWithThrow(Table table) {
-        String queryWrapperParamName = queryWrapperParamName();
-        return assertExistOneWithThrowBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argument(argNotNull($L, $S), $T::isCount, q -> \"The count field in the $L should be set to true.\")", queryWrapperParamName, queryWrapperParamName, QueryWrapper.class, queryWrapperParamName)
-            .addStatement("argNotNull($L, $S)", "recordNotFoundExceptionSupplier", "recordNotFoundExceptionSupplier")
-            .addStatement("argNotNull($L, $S)", "multipleRecordsFoundExceptionSupplier", "multipleRecordsFoundExceptionSupplier")
-            .beginIf("$L.count($L.selectOrCountDynamic($L)) == 0", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .addStatement("throw $L.get()", "recordNotFoundExceptionSupplier")
-            .endIf()
-            .beginIf("$L.count($L.selectOrCountDynamic($L)) > 1", mapperFieldName(table), sqlProviderFieldName(table), queryWrapperParamName)
-            .addStatement("throw $L.get()", "multipleRecordsFoundExceptionSupplier")
-            .endIf()
-            .end()
-            .build();
-    }
-
-
-    protected MethodSpec delete(Table table) {
-        return deleteBuild()
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("return $L.deleteGeneral($L.deleteDynamic($L))", mapperFieldName(table), sqlProviderFieldName(table), conditionParamName())
-            .end()
-            .build();
-    }
-
-    protected MethodSpec update(Table table) {
-        String columnUpdateParamName = columnUpdateParamName(table);
-        String conditionParamName = conditionParamName();
-        String paramsLocalParamName = "params";
-        String affectedRowCountLocalParamName = "affectedRowCount";
-        return updateBuild(table)
-            .addModifier(PUBLIC)
-            .addAnnotation(Override.class)
-            .beginMethodBody()
-            .addStatement("argNotNull($L,$S)", columnUpdateParamName, columnUpdateParamName)
-            .addStatement("argNotNull($L,$S)", conditionParamName, conditionParamName)
-            .addStatement("$T<String, Object> $L = ofHashMap(entry(UPDATE_BY_COLUMN_OBJECT, $L), entry($S, $L))",
-                HashMap.class, paramsLocalParamName, columnUpdateParamName, conditionParamName, conditionParamName)
-            .addStatement("$L($L)", beforeUpdateMethodName(), paramsLocalParamName)
-            .addStatement("long $L =  $L.updateGeneral($L.updateDynamic($L, $L))", affectedRowCountLocalParamName, mapperFieldName(table), sqlProviderFieldName(table), columnUpdateParamName, conditionParamName())
-            .addStatement("$L($L)", afterUpdateMethodName(), paramsLocalParamName)
-            .addStatement("return $L", affectedRowCountLocalParamName)
-            .end()
-            .build();
-    }
 
 }

@@ -16,19 +16,18 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
-import glz.hawk.jdesigner.spec.database.Column;
-import glz.hawk.jdesigner.translator.Translator;
-import glz.hawk.j4sql.support.impl.DefaultValueColumn;
 import glz.hawk.codepoet.java.MethodSpec;
-import glz.hawk.codepoet.java.javadoc.HtmlTag;
 import glz.hawk.codepoet.java.javadoc.MethodJavadoc;
 import glz.hawk.codepoet.java.type.TypeName;
+import glz.hawk.j4sql.support.impl.DefaultValueColumn;
+import glz.hawk.jdesigner.spec.database.Column;
+import glz.hawk.jdesigner.translator.Translator;
 
 import javax.annotation.Nonnull;
 import javax.lang.model.element.Modifier;
 
-import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 import static glz.hawk.codepoet.java.type.VoidTypeName.VOID;
+import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 
 /**
  * This class is responsible for
@@ -41,41 +40,28 @@ public class ColumnToSqlFieldUpdatedSetter implements Translator<Column, MethodS
     private final Translator<Column, String> fieldNameTranslator;
     private final Translator<Column, TypeName> typeNameTranslator;
     private final Translator<Column, String> fieldUpdatedNameTranslator;
+    private final Translator<Column, MethodJavadoc> methodJavadocTranslator;
 
     public ColumnToSqlFieldUpdatedSetter(Translator<Column, String> methodNameTranslator, Translator<Column, String> fieldNameTranslator,
-                                         Translator<Column, TypeName> typeNameTranslator, Translator<Column, String> fieldUpdatedNameTranslator) {
+                                         Translator<Column, TypeName> typeNameTranslator, Translator<Column, String> fieldUpdatedNameTranslator, Translator<Column, MethodJavadoc> methodJavadocTranslator) {
         this.methodNameTranslator = argNotNull(methodNameTranslator, "methodNameTranslator");
         this.fieldNameTranslator = argNotNull(fieldNameTranslator, "fieldNameTranslator");
         this.typeNameTranslator = argNotNull(typeNameTranslator, "typeNameTranslator");
         this.fieldUpdatedNameTranslator = argNotNull(fieldUpdatedNameTranslator, "fieldUpdatedNameTranslator");
+        this.methodJavadocTranslator =  argNotNull(methodJavadocTranslator, "methodJavadocTranslator");
     }
 
     @Nonnull
     @Override
     public MethodSpec translate(@Nonnull Column column) {
-        argNotNull(column, "column");
-        String fieldName = fieldNameTranslator.translate(column);
-        String fieldUpdatedName = fieldUpdatedNameTranslator.translate(column);
-        String methodName = methodNameTranslator.translate(column);
-        TypeName typeName = typeNameTranslator.translate(column);
-        return MethodSpec.builder(VOID, methodName, Modifier.PUBLIC)
-            .setJavadoc(buildJavadoc((column)))
-            .addParameter(typeName, fieldName)
+        String fieldName = fieldNameTranslator.translate(argNotNull(column, "column"));
+        return MethodSpec.builder(VOID, methodNameTranslator.translate(column), Modifier.PUBLIC)
+            .setJavadoc(methodJavadocTranslator.translate(column))
+            .addParameter(typeNameTranslator.translate(column), fieldName)
             .beginMethodBody()
             .addStatement("this.$L = $L == null ? null : new $T($L)", fieldName, fieldName, DefaultValueColumn.class, fieldName)
-            .addStatement("this.$L = $L", fieldUpdatedName, true)
+            .addStatement("this.$L = $L", fieldUpdatedNameTranslator.translate(column), true)
             .end()
             .build();
-    }
-
-    protected MethodJavadoc buildJavadoc(Column column) {
-        MethodJavadoc.Builder javadocBuilder = MethodJavadoc.builder();
-        if (column.getComment().isPresent()) {
-            javadocBuilder.beginJavadoc().addDocument("Sets $L", column.getComment().get());
-            javadocBuilder.beginJavadoc().addInlineHtml(HtmlTag.P, "Map to column: $L", column.getName());
-        } else {
-            javadocBuilder.beginJavadoc().addDocument("Map to column: $L", column.getName());
-        }
-        return javadocBuilder.build();
     }
 }

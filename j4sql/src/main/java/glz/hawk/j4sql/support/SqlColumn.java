@@ -103,7 +103,8 @@ public interface SqlColumn {
     @Nonnull
     Condition isNotNull();
 
-    <T> Condition between(T minValue, T maxValue);
+    @Nonnull
+    <T>Condition between(T minValue, T maxValue);
 
     // expression
 

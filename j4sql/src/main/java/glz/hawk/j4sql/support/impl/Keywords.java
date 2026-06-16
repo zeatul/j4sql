@@ -139,6 +139,31 @@ public enum Keywords implements Keyword {
             return "EXISTS";
         }
     },
+    CASE{
+        public String toSql(Configuration configuration) {
+            return "CASE";
+        }
+    },
+    WHEN{
+        public String toSql(Configuration configuration) {
+            return "WHEN";
+        }
+    },
+    THEN{
+        public String toSql(Configuration configuration) {
+            return "THEN";
+        }
+    },
+    ELSE{
+        public String toSql(Configuration configuration) {
+            return "ELSE";
+        }
+    },
+    END{
+        public String toSql(Configuration configuration) {
+            return "END";
+        }
+    },
     NOT {
         public String toSql(Configuration configuration) {
             return "NOT";

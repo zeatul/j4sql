@@ -16,19 +16,19 @@
 
 package glz.hawk.j4sql.mybatis.translator;
 
-import glz.hawk.codepoet.java.type.*;
-import glz.hawk.jdesigner.spec.database.Column;
-import glz.hawk.jdesigner.spec.database.IndexColumn;
-import glz.hawk.jdesigner.spec.database.PrimaryKey;
-import glz.hawk.jdesigner.spec.database.Table;
-import glz.hawk.jdesigner.translator.Translator;
-import glz.hawk.jdesigner.translator.database.TableHelper;
-import glz.hawkframework.core.helper.StringHelper;
-import glz.hawk.j4sql.condition.Condition;
-import glz.hawk.j4sql.util.QueryWrapper;
+import com.google.common.base.CaseFormat;
 import glz.hawk.codepoet.java.MethodSpec;
 import glz.hawk.codepoet.java.ParameterSpec;
+import glz.hawk.codepoet.java.type.*;
+import glz.hawk.j4sql.condition.Condition;
+import glz.hawk.j4sql.util.DeleteWrapper;
+import glz.hawk.j4sql.util.QueryWrapper;
+import glz.hawk.j4sql.util.UpdateWrapper;
+import glz.hawk.jdesigner.spec.database.*;
+import glz.hawk.jdesigner.translator.Translator;
+import glz.hawkframework.core.helper.StringHelper;
 
+import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.util.Arrays;
 import java.util.List;
@@ -37,8 +37,8 @@ import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 import static glz.hawk.codepoet.java.type.PrimitiveTypeName.*;
-import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 import static glz.hawk.codepoet.java.type.VoidTypeName.VOID;
+import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 
 /**
  * This class is responsible for
@@ -47,20 +47,40 @@ import static glz.hawk.codepoet.java.type.VoidTypeName.VOID;
  */
 public abstract class AbstractTableToRepository {
     protected final Translator<Table, String> repositoryClassPackageTranslator;
+
     protected final Translator<Table, String> repositoryClassNameTranslator;
+
     protected final Translator<Table, String> poClassPackageTranslator;
+
     protected final Translator<Table, String> poClassNameTranslator;
+
     protected final Translator<Column, String> columnToParamNameTranslator;
+
     protected final Translator<Column, TypeName> columnToTypeNameTranslator;
+
     protected final Translator<Table, String> updateClassPackageTranslator;
+
     protected final Translator<Table, String> updateClassNameTranslator;
+
     protected final Translator<Table, String> columnUpdateClassNameTranslator;
 
-    protected AbstractTableToRepository(Translator<Table, String> repositoryClassPackageTranslator, Translator<Table, String> repositoryClassNameTranslator,
-                                        Translator<Table, String> poClassPackageTranslator, Translator<Table, String> poClassNameTranslator,
-                                        Translator<Column, String> columnToParamNameTranslator, Translator<Column, TypeName> columnToTypeNameTranslator,
-                                        Translator<Table, String> updateClassPackageTranslator, Translator<Table, String> updateClassNameTranslator,
-                                        Translator<Table, String> columnUpdateClassNameTranslator) {
+    protected final ColumnFinder recordVersionColumnFinder;
+
+    protected final boolean supportColumnInsertOrUpdate;
+
+    protected AbstractTableToRepository(
+        Translator<Table, String> repositoryClassPackageTranslator,
+        Translator<Table, String> repositoryClassNameTranslator,
+        Translator<Table, String> poClassPackageTranslator,
+        Translator<Table, String> poClassNameTranslator,
+        Translator<Column, String> columnToParamNameTranslator,
+        Translator<Column, TypeName> columnToTypeNameTranslator,
+        Translator<Table, String> updateClassPackageTranslator,
+        Translator<Table, String> updateClassNameTranslator,
+        Translator<Table, String> columnUpdateClassNameTranslator,
+        ColumnFinder recordVersionColumnFinder,
+        boolean supportColumnInsertOrUpdate
+    ) {
         this.repositoryClassPackageTranslator = argNotNull(repositoryClassPackageTranslator, "repositoryClassPackageTranslator");
         this.repositoryClassNameTranslator = argNotNull(repositoryClassNameTranslator, "repositoryClassNameTranslator");
         this.poClassPackageTranslator = argNotNull(poClassPackageTranslator, "poClassPackageTranslator");
@@ -70,6 +90,8 @@ public abstract class AbstractTableToRepository {
         this.updateClassPackageTranslator = argNotNull(updateClassPackageTranslator, "updateClassPackageTranslator");
         this.updateClassNameTranslator = argNotNull(updateClassNameTranslator, "updateClassNameTranslator");
         this.columnUpdateClassNameTranslator = argNotNull(columnUpdateClassNameTranslator, "columnUpdateClassNameTranslator");
+        this.recordVersionColumnFinder = argNotNull(recordVersionColumnFinder, "recordVersionColumnFinder");
+        this.supportColumnInsertOrUpdate = supportColumnInsertOrUpdate;
     }
 
     protected ClassName poClassName(Table table) {
@@ -104,17 +126,19 @@ public abstract class AbstractTableToRepository {
         return StringHelper.unCapitalize(columnUpdateClassNameTranslator.translate(table));
     }
 
-    protected String insertMethodName(){
+    protected String insertMethodName() {
         return "insert";
     }
+
     protected MethodSpec.Builder insertBuilder(Table table) {
         return MethodSpec.builder(VOID, insertMethodName())
             .addParameter(poClassName(table), poParamName(table));
     }
 
-    protected String insertSelectiveMethodName(){
+    protected String insertSelectiveMethodName() {
         return "insertSelective";
     }
+
     protected MethodSpec.Builder insertSelectiveBuilder(Table table) {
         return MethodSpec.builder(VOID, insertSelectiveMethodName())
             .addParameter(poClassName(table), poParamName(table));
@@ -139,81 +163,102 @@ public abstract class AbstractTableToRepository {
             .addParameter(posClassName(table), posParamName(table));
     }
 
-    protected String deleteByPrimaryKeyMethodName(){
-        return "deleteByPrimaryKey";
-    }
-    protected MethodSpec.Builder deleteByPrimaryKeyBuilder(PrimaryKey primaryKey) {
-        return MethodSpec.builder(VOID, deleteByPrimaryKeyMethodName())
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
-            .add(b -> TableHelper.findRecordVersionColumn(primaryKey.getOwner()).ifPresent(column -> b.addParameter(columnToTypeNameTranslator.translate(column), columnToParamNameTranslator.translate(column))));
+    protected String deleteByPrimaryKeyOrUniqueIndexMethodName(IndexSupport<?> indexSupport) {
+        return indexSupport instanceof PrimaryKey ?
+            "deleteByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "DELETE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
     }
 
-    protected String updateByPrimaryKeyMethodName(){
-        return "updateByPrimaryKey";
+    protected MethodSpec.Builder deleteByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
+        return MethodSpec.builder(VOID, deleteByPrimaryKeyOrUniqueIndexMethodName(indexSupport))
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
+            .add(b -> recordVersionColumnFinder.find(indexSupport.getOwner()).ifPresent(column -> b.addParameter(columnToTypeNameTranslator.translate(column), columnToParamNameTranslator.translate(column))));
     }
-    protected MethodSpec.Builder updateByPrimaryKeyBuilder(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        return MethodSpec.builder(VOID, updateByPrimaryKeyMethodName())
+
+    protected String updateByPrimaryKeyOrUniqueIndexMethodName(IndexSupport<?> indexSupport) {
+        return indexSupport instanceof PrimaryKey ?
+            "updateByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "UPDATE_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
+    }
+
+    protected MethodSpec.Builder updateByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        return MethodSpec.builder(VOID, updateByPrimaryKeyOrUniqueIndexMethodName(indexSupport))
             .addParameter(updateClassName(table), updateParamName(table))
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
-            .add(b -> TableHelper.findRecordVersionColumn(primaryKey.getOwner()).ifPresent(column -> b.addParameter(columnToTypeNameTranslator.translate(column), columnToParamNameTranslator.translate(column))));
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
+            .add(b -> recordVersionColumnFinder.find(indexSupport.getOwner()).ifPresent(column -> b.addParameter(columnToTypeNameTranslator.translate(column), columnToParamNameTranslator.translate(column))));
     }
 
-    protected MethodSpec.Builder getByPrimaryKeyBuilder(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        return MethodSpec.builder(ParameterizedTypeName.of(Optional.class, poClassName(table)), "getByPrimaryKey")
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))));
+    private String getByPrimaryKeyOrIndexMethodName(IndexSupport<?> indexSupport) {
+        return indexSupport instanceof PrimaryKey ?
+            "getByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "GET_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
     }
 
-    protected String loadByPrimaryKeyMethodName(){
-        return "loadByPrimaryKey";
+    protected MethodSpec.Builder getByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        return MethodSpec.builder(ParameterizedTypeName.of(Optional.class, poClassName(table)), getByPrimaryKeyOrIndexMethodName(indexSupport))
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))));
     }
-    protected MethodSpec.Builder loadByPrimaryKeyBuilder(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
-        return MethodSpec.builder(poClassName(table), loadByPrimaryKeyMethodName())
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
-            .setJavadoc("Throws an exception if found no record by the primary key.");
+
+    protected String loadByPrimaryKeyOrUniqueIndexMethodName(IndexSupport<?> indexSupport) {
+        return indexSupport instanceof PrimaryKey ?
+            "loadByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "LOAD_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+
+    }
+
+    protected MethodSpec.Builder loadByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
+        return MethodSpec.builder(poClassName(table), loadByPrimaryKeyOrUniqueIndexMethodName(indexSupport))
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))))
+            .setJavadoc("Throws an exception if found no record by the primary key or unique index.");
     }
 
     protected String exceptionSupplierParamName() {
         return "exceptionSupplier";
     }
 
-    protected MethodSpec.Builder loadWithThrowByPrimaryKeyBuilder(PrimaryKey primaryKey) {
-        Table table = primaryKey.getOwner();
+    protected MethodSpec.Builder loadWithThrowByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
+        Table table = indexSupport.getOwner();
         String typeVariableName = "E";
         String exceptionSupplierParamName = exceptionSupplierParamName();
-        return MethodSpec.builder(poClassName(table), "loadByPrimaryKey")
+        return MethodSpec.builder(poClassName(table), loadByPrimaryKeyOrUniqueIndexMethodName(indexSupport))
             .addTypeVariable(TypeVariableName.of(typeVariableName, Throwable.class))
             .add(b -> {
-                Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)));
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)));
                 b.addParameter(ParameterizedTypeName.of(Supplier.class, WildcardTypeName.ofUpper(TypeVariableName.of(typeVariableName))), exceptionSupplierParamName);
             })
             .addThrowable(TypeVariableName.of(typeVariableName))
-            .setJavadoc("Throws the supplied exception if found no record by the primary key.");
+            .setJavadoc("Throws the supplied exception if found no record by the primary key or unique index.");
     }
 
 
-    protected MethodSpec.Builder existByPrimaryKeyBuilder(PrimaryKey primaryKey) {
-        return MethodSpec.builder(BOOLEAN, "existByPrimaryKey")
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))));
+    protected String existByPrimaryKeyOrUniqueIndexMethodName(IndexSupport<?> indexSupport) {
+        return indexSupport instanceof PrimaryKey ?
+            "existByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "EXIST_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
     }
 
-    protected String assertExistByPrimaryKeyMethodName(){
-        return "assertExistByPrimaryKey";
-    }
-    protected MethodSpec.Builder assertExistByPrimaryKeyBuilder(PrimaryKey primaryKey) {
-        return MethodSpec.builder(VOID, assertExistByPrimaryKeyMethodName())
-            .add(b -> Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)))).setJavadoc("Throws an exception if the required record doesn't exist");
+    protected MethodSpec.Builder existByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
+        return MethodSpec.builder(BOOLEAN, existByPrimaryKeyOrUniqueIndexMethodName(indexSupport))
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c))));
     }
 
-    protected MethodSpec.Builder assertExistWithThrowByPrimaryKeyBuilder(PrimaryKey primaryKey) {
+    protected String assertExistByPrimaryKeyOrUniqueIndexMethodName(IndexSupport<?> indexSupport) {
+        return indexSupport instanceof PrimaryKey ?
+            "assertExistByPrimaryKey" : CaseFormat.UPPER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, "ASSERT_EXIST_BY_" + ((Index) indexSupport).getShortName().orElse(((Index) indexSupport).getName()).toUpperCase());
+    }
+
+    protected MethodSpec.Builder assertExistByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
+        return MethodSpec.builder(VOID, assertExistByPrimaryKeyOrUniqueIndexMethodName(indexSupport))
+            .add(b -> Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)))).setJavadoc("Throws an exception if the required record doesn't exist");
+    }
+
+    protected MethodSpec.Builder assertExistWithThrowByPrimaryKeyOrUniqueIndexBuilder(IndexSupport<?> indexSupport) {
         String typeVariableName = "E";
         String exceptionSupplierParamName = exceptionSupplierParamName();
-        return MethodSpec.builder(VOID, "assertExistByPrimaryKey")
+        return MethodSpec.builder(VOID, assertExistByPrimaryKeyOrUniqueIndexMethodName(indexSupport))
             .addTypeVariable(TypeVariableName.of(typeVariableName, Throwable.class))
             .add(b -> {
-                Arrays.stream(primaryKey.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)));
+                Arrays.stream(indexSupport.getIndexColumns()).map(IndexColumn::getColumn).forEach(c -> b.addParameter(columnToTypeNameTranslator.translate(c), columnToParamNameTranslator.translate(c)));
                 b.addParameter(ParameterizedTypeName.of(Supplier.class, WildcardTypeName.ofUpper(TypeVariableName.of(typeVariableName))), exceptionSupplierParamName);
             }).addThrowable(TypeVariableName.of(typeVariableName))
             .setJavadoc("Throws the supplied exception if the required record doesn't exist");
@@ -245,7 +290,7 @@ public abstract class AbstractTableToRepository {
             .addParameter(ParameterizedTypeName.of(Consumer.class, poClassName(table)), consumerParamName());
     }
 
-    protected String loadOneMethodName(){
+    protected String loadOneMethodName() {
         return "loadOne";
     }
 
@@ -275,9 +320,10 @@ public abstract class AbstractTableToRepository {
             .addParameter(QueryWrapper.class, queryWrapperParamName());
     }
 
-    protected String assertExistMethodName(){
+    protected String assertExistMethodName() {
         return "assertExist";
     }
+
     protected MethodSpec.Builder assertExistBuild() {
         return MethodSpec.builder(VOID, assertExistMethodName())
             .addParameter(QueryWrapper.class, queryWrapperParamName())
@@ -321,15 +367,31 @@ public abstract class AbstractTableToRepository {
         return "condition";
     }
 
+    protected String deleteWrapperParamName() {
+        return "deleteWrapper";
+    }
+
+    protected TypeName deleteWrapperClassName() {
+        return ClassName.ofClass(DeleteWrapper.class);
+    }
+
+
     protected MethodSpec.Builder deleteBuild() {
         return MethodSpec.builder(LONG, "delete")
-            .addParameter(ParameterSpec.builder(Condition.class, conditionParamName()).addAnnotation(Nullable.class).build());
+            .addParameter(ParameterSpec.builder(deleteWrapperClassName(), deleteWrapperParamName()).addAnnotation(Nonnull.class).build());
+    }
+
+    protected String updateWrapperParamName() {
+        return "updateWrapper";
+    }
+
+    protected TypeName updateWrapperClassName(Table table) {
+        return ParameterizedTypeName.of(ClassName.ofClass(UpdateWrapper.class), columnUpdateClassName(table));
     }
 
     protected MethodSpec.Builder updateBuild(Table table) {
         return MethodSpec.builder(LONG, "update")
-            .addParameter(columnUpdateClassName(table), columnUpdateParamName(table))
-            .addParameter(ParameterSpec.builder(Condition.class, conditionParamName()).addAnnotation(Nullable.class).build());
+            .addParameter(ParameterSpec.builder(updateWrapperClassName(table), updateWrapperParamName()).addAnnotation(Nonnull.class).build());
     }
 
 }

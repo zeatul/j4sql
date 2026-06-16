@@ -22,7 +22,6 @@ import org.mybatis.spring.SqlSessionTemplate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.Consumer;
 
 import static glz.hawkframework.core.support.ArgumentSupport.*;
 
@@ -39,26 +38,48 @@ public class BatchExecutor {
         this.batchSqlSessionTemplate = argNotNull(batchSqlSessionTemplate, "batchSqlSessionTemplate");
     }
 
-    public <M, T> void execute(Class<M> mapperClass, List<T> dataList, int batchSize, BiConsumer<M, T> operation) {
-        execute(mapperClass, dataList, batchSize, operation, null);
+    /**
+     *
+     * @param mapperClass  the class of mapper
+     * @param dataList     the data for batch execution
+     * @param batchSize    the size of batch
+     * @param sqlOperation the sqlOperation for executing one SQL
+     * @param <M>          Mapper
+     * @param <T>          Parameters
+     */
+    public <M, T> void execute(Class<M> mapperClass, List<T> dataList, int batchSize, BiConsumer<M, T> sqlOperation) {
+        execute(mapperClass, dataList, batchSize, sqlOperation, EmptyBatchResultConsumer.INSTANCE);
     }
 
-    public <M, T> void execute(Class<M> mapperClass, List<T> dataList, int batchSize, BiConsumer<M, T> operation, Consumer<BatchResult> batchResultConsumer) {
+    /**
+     *
+     * @param mapperClass         the class of mapper
+     * @param dataList            the data for batch execution
+     * @param batchSize           the size of batch
+     * @param sqlOperation        the sqlOperation for executing one SQL
+     * @param batchResultConsumer the consumer for batch execution result, The first parameter is the number of SQL statements that have been executed before the current batch,
+     *                            the second parameter is current batchResult.
+     * @param <M>                 Mapper
+     * @param <T>                 Parameters
+     */
+    public <M, T> void execute(Class<M> mapperClass, List<T> dataList, int batchSize, BiConsumer<M, T> sqlOperation, BiConsumer<Integer, BatchResult> batchResultConsumer) {
         argNotNull(mapperClass, "mapperClass");
         argNotEmpty(dataList, "dataList");
         argument(batchSize, b -> b > 0, b -> "The parameter['batchSize'] must be greater than 0.");
-        argNotNull(operation, "operation");
+        argNotNull(sqlOperation, "sqlOperation");
+        argNotNull(batchResultConsumer, "batchResultConsumer");
         List<BatchResult> result = new ArrayList<>();
         M mapper = batchSqlSessionTemplate.getMapper(mapperClass);
         for (int i = 0; i < dataList.size(); i += batchSize) {
             List<T> chunk = dataList.subList(i, Math.min(i + batchSize, dataList.size()));
             for (T t : chunk) {
-                operation.accept(mapper, t);
+                sqlOperation.accept(mapper, t);
             }
             List<BatchResult> batchResultList = batchSqlSessionTemplate.flushStatements();
-            if (batchResultConsumer != null) {
-                batchResultList.forEach(batchResultConsumer);
-            }
+            final int finalI = i;
+            batchResultList.forEach(batchResult -> {
+                batchResultConsumer.accept(finalI * batchSize, batchResult);
+            });
             batchSqlSessionTemplate.clearCache();
         }
     }

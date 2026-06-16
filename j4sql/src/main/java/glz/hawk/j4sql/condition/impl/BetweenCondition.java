@@ -31,29 +31,30 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 public class BetweenCondition implements Condition {
 
     private final SqlColumn sqlColumn;
-    private final ValueColumn minValue;
-    private final ValueColumn maxValue;
 
-    private BetweenCondition(SqlColumn sqlColumn, ValueColumn minValue, ValueColumn maxValue) {
+    private final SqlColumn minValue;
+
+    private final SqlColumn maxValue;
+
+    private BetweenCondition(SqlColumn sqlColumn, SqlColumn minValue, SqlColumn maxValue) {
         this.sqlColumn = argNotNull(sqlColumn, "sqlColumn");
         this.minValue = argNotNull(minValue, "minValue");
         this.maxValue = argNotNull(maxValue, "maxValue");
     }
 
-    public static <V> BetweenCondition of(SqlColumn sqlColumn, V minValue, V maxValue) {
-        return new BetweenCondition(sqlColumn, minValue instanceof ValueColumn ? (ValueColumn) minValue : new DefaultValueColumn(minValue),
-            maxValue instanceof ValueColumn ? (ValueColumn) maxValue : new DefaultValueColumn(maxValue));
+    public static <V> BetweenCondition of(SqlColumn sqlColumn, SqlColumn minValue, SqlColumn maxValue) {
+        return new BetweenCondition(sqlColumn, minValue, maxValue);
     }
 
     public SqlColumn getSqlColumn() {
         return sqlColumn;
     }
 
-    public ValueColumn getMinValue() {
+    public SqlColumn getMinValue() {
         return minValue;
     }
 
-    public ValueColumn getMaxValue() {
+    public SqlColumn getMaxValue() {
         return maxValue;
     }
 

@@ -35,11 +35,12 @@ public class CompareCondition implements Condition, LikeEscapeStep {
     private final Comparator comparator;
     private Character escape = null;
 
-    private CompareCondition(SqlColumn leftColumn, SqlColumn rightColumn, Comparator comparator) {
+    protected CompareCondition(SqlColumn leftColumn, SqlColumn rightColumn, Comparator comparator) {
         this.leftColumn = argNotNull(leftColumn, "leftColumn");
         this.rightColumn = argNotNull(rightColumn, "rightColumn");
         this.comparator = argNotNull(comparator, "comparator");
     }
+
 
     public static CompareCondition of(Comparator comparator, SqlColumn leftColumn, SqlColumn rightColumn) {
         return new CompareCondition(leftColumn, rightColumn, comparator);

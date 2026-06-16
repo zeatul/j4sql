@@ -21,6 +21,9 @@ import glz.hawk.j4sql.support.AliasedNamedColumn;
 import glz.hawk.j4sql.support.AliasedSelectColumn;
 import glz.hawk.j4sql.support.NamedColumn;
 
+import java.util.Map;
+import java.util.Optional;
+
 /**
  * This class is responsible for
  *
@@ -39,8 +42,29 @@ public class DefaultAliasedNamedColumn extends DefaultAliasedSelectColumn<NamedC
         super(sourceColumn, aliasName);
     }
 
-    public DefaultAliasedNamedColumn(String columnName,String aliasName){
-        super(new DefaultNamedColumn(columnName),aliasName);
+    public DefaultAliasedNamedColumn(String columnName, String aliasName) {
+        super(new DefaultNamedColumn(columnName), aliasName);
     }
 
+    public DefaultAliasedNamedColumn(String tableName, String columnName, String aliasName) {
+        super(new DefaultNamedColumn(tableName, columnName), aliasName);
+    }
+
+    public DefaultAliasedNamedColumn(String columnName, String aliasName, Map<String, Object> extensions) {
+        super(new DefaultNamedColumn(columnName, extensions), aliasName);
+    }
+
+    public DefaultAliasedNamedColumn(String tableName, String columnName, String aliasName, Map<String, Object> extensions) {
+        super(new DefaultNamedColumn(tableName, columnName, extensions), aliasName);
+    }
+
+    @Override
+    public <T> Optional<T> getExtension(String key, Class<T> tClass) {
+        return getSourceColumn().getExtension(key, tClass);
+    }
+
+    @Override
+    public Optional<Object> getExtension(String key) {
+        return getSourceColumn().getExtension(key);
+    }
 }

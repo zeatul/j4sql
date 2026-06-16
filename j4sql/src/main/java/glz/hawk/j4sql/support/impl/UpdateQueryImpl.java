@@ -23,6 +23,7 @@ import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
+import static glz.hawkframework.core.support.ArgumentSupport.argNotEmptyAndNoNulElement;
 import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 
 /**
@@ -33,28 +34,25 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 public class UpdateQueryImpl extends AbstractConditionSupport implements UpdateQuery {
 
     private final List<UpdateColumnValuePair> updateColumnValuePairs = new ArrayList<>();
+
     private final Map<String, UpdateColumnValuePair> filterMap = new HashMap<>();
-    private SqlTable updateTable;
+
+    private final List<SqlTable> updateTables = new ArrayList<>();
 
     @Nonnull
     @Override
-    public SqlTable getUpdateTable() {
-        return updateTable;
+    public List<SqlTable> getUpdateTables() {
+        return Collections.unmodifiableList(updateTables);
     }
 
     @Override
-    public void addUpdateTable(PhysicalTable updateTable) {
-        this.updateTable = argNotNull(updateTable, "updateTable");
-    }
-
-    @Override
-    public void addUpdateTable(AliasedSqlTable<PhysicalTable> aliasedUpdateTable) {
-        this.updateTable = argNotNull(aliasedUpdateTable, "aliasedUpdateTable");
+    public void addUpdateTable(SqlTable... updateTables) {
+        this.updateTables.addAll(Arrays.asList(argNotEmptyAndNoNulElement(updateTables, "updateTables")));
     }
 
     @Override
     public void addSet(NamedColumn updateColumn, SqlColumn valueColumn) {
-        addSetTemplate(updateColumn, valueColumn == null ? new DefaultValueColumn(NullValue.INSTANCE) : valueColumn, (c, v) -> new UpdateColumnValuePairImpl(c, (ValueColumn) v), c -> ((NamedColumn) c).getColumnName());
+        addSetTemplate(updateColumn, valueColumn == null ? new DefaultValueColumn(NullValue.INSTANCE) : valueColumn, (c, v) -> new UpdateColumnValuePairImpl(c, (SqlColumn) v), c -> ((NamedColumn) c).getColumnName());
     }
 
     @Override

@@ -16,9 +16,9 @@
 
 package glz.hawk.j4sql.condition.impl;
 
-import glz.hawkframework.core.helper.ObjectHelper;
 import glz.hawk.j4sql.condition.Condition;
 import glz.hawk.j4sql.condition.ConnectCondition;
+import glz.hawkframework.core.helper.ObjectHelper;
 import glz.hawkframework.core.support.ArgumentSupport;
 
 import java.util.ArrayList;
@@ -26,7 +26,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
-import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
+import static glz.hawkframework.core.support.ArgumentSupport.*;
 
 /**
  * This class is responsible for
@@ -36,20 +36,20 @@ import static glz.hawkframework.core.support.ArgumentSupport.argNotNull;
 public class CombinedCondition implements Condition {
 
     private final Condition condition;
+
     private final List<ConnectCondition> connectConnections = new ArrayList<>();
 
     private CombinedCondition(Condition condition, ConnectCondition... connectConditions) {
-        this.condition = argNotNull(condition, "condition");
-        this.connectConnections.addAll(Arrays.asList(ArgumentSupport.argNotEmptyAndNoNulElement(connectConditions, "connectConditions")));
+        this.condition = condition;
+        this.connectConnections.addAll(Arrays.asList(connectConditions));
     }
 
     public static Condition of(Condition condition, ConnectCondition... connectConditions) {
-        if (ObjectHelper.isEmpty(connectConditions)) {
-            return argNotNull(condition,"condition");
-        } else {
-            return new CombinedCondition(condition, connectConditions);
-        }
+        argument(argNotNull(condition, "condition"), c -> !(c instanceof EmptyCondition), c -> "The condition must not be an EmptyCondition.");
+        if (connectConditions.length == 0) return condition;
+        return new CombinedCondition(condition,  argNotEmptyAndNoNulElement(connectConditions, "connectConditions"));
     }
+
 
     public Condition getCondition() {
         return this.condition;
